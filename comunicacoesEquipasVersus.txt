@@ -1,15 +1,9 @@
-Torneio Versus Game Center por equipas!
+# 🏆 Torneio Versus Game Center por Equipas!
 
-green[Vencedores:]
+### :green[Vencedores:]
 
-gold[1º Lugar]
-Spin Diesel
-8 - 2 - 0
+🥇 :orange[**1º Lugar:**] **Spin Diesel** (8 - 2 - 0)
 
-[silver]2º Lugar
-Slayers
-7 - 3 - 0
+🥈 :gray[**2º Lugar:**] **Slayers** (7 - 3 - 0)
 
-[orange]3º Lugar
-MoscaKnight
-7 - 3 - 0
+🥉 :red[**3º Lugar:**] **MoscaKnight** (7 - 3 - 0)
