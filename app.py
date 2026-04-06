@@ -1,0 +1,172 @@
+import streamlit as st
+import pandas as pd
+import json
+import os
+
+# 1. Configuração da Página
+st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="🛡️")
+
+# 2. Carregar a Base de Dados
+@st.cache_data
+def load_data():
+    try:
+        with open('bbpt_master_db.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+
+# Função para ler os ficheiros de comunicações em tempo real
+def load_communications(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+            if content:
+                return content
+    return None
+
+db = load_data()
+
+if not db:
+    st.error("Base de dados não encontrada. Corre o bbpt_admin_sync.py primeiro.")
+    st.stop()
+
+# 3. Menu de Navegação Lateral
+st.sidebar.title("🛡️ BBPT Hub")
+page = st.sidebar.radio("Navegação:", ["Liga Critical", "Liga Versus", "Rankings Globais", "Ad-Hoc: Blader Profile"])
+st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
+
+# ==========================================
+# FUNÇÃO REUTILIZÁVEL PARA RENDERIZAR MÉTRICAS AVANÇADAS
+# ==========================================
+def render_advanced_metrics(metrics, league_mode=True):
+    title_suffix = "League" if league_mode else "Global Rankings"
+    
+    st.subheader(f"📈 {title_suffix} Advanced Metrics")
+    
+    st.markdown(f"### 👑 Kings of the {title_suffix}")
+    st.caption("Top players with the most 1st place finishes.")
+    for king in metrics.get('kings', []): st.write(king)
+    
+    st.markdown(f"### ⚔️ Upset of the {title_suffix}")
+    st.info(metrics.get('upset_season', 'N/A'))
+    
+    st.markdown("### 🛡️ The Gatekeeper")
+    st.caption("Dominates Swiss but struggles in Top Cut.")
+    st.warning(metrics.get('gatekeeper', 'N/A'))
+    
+    # --- META HEALTH CORRIGIDO E AJUSTADO AO BEYBLADE X ---
+    st.markdown("### 📊 Meta-Health (Média de Pontos Combinados)")
+    st.success(metrics.get('meta_health', 'N/A'))
+    st.markdown("""
+    *(Jogos normais até 4 pts | Top Cut até 5 pts | Finais até 7 pts)*
+    * **Alta (> 6.5 Pts):** Meta de Ataque Agressivo (Jogos rápidos e explosivos decididos por X-Treme Finishes de 3 pts. Ex: 4-0, 5-1)
+    * **Média (5.0 - 6.5 Pts):** Meta Equilibrada (Mistura saudável de Spin, Burst e Over Finishes)
+    * **Baixa (< 5.0 Pts):** Meta de Defesa/Stamina (Jogos longos, muitas rondas decididas por Spin Finishes de 1 ponto. Ex: 4-3, 5-4)
+    """)
+
+# ==========================================
+# FUNÇÃO PARA RENDERIZAR PÁGINAS DE LIGA
+# ==========================================
+def render_league_page(league_name, league_key, comm_file):
+    st.title(f"🏆 {league_name}")
+    
+    comunicado = load_communications(comm_file)
+    if comunicado:
+        st.info(f"📢 **Quadro de Avisos da Organização:**\n\n{comunicado}")
+    
+    data = db.get(league_key)
+    if not data or not data.get("standings"):
+        st.warning(f"Ainda não há dados de partidas disponíveis para a {league_name}.")
+        return
+
+    st.subheader("📊 League Standings")
+    st.markdown("*Official points ranking based on Top 8 finishes.*")
+    df_standings = pd.DataFrame(data['standings'])
+    if not df_standings.empty:
+        df_standings.set_index('Rank', inplace=True)
+    st.dataframe(df_standings, use_container_width=True)
+
+    st.divider()
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        render_advanced_metrics(data['advanced_metrics'], league_mode=True)
+
+    with col2:
+        st.subheader("📋 Tournament Audit Log")
+        df_audit = pd.DataFrame(data['audit_log'])
+        if not df_audit.empty:
+            df_audit.index += 1
+            df_audit.index.name = "#"
+        st.dataframe(df_audit, use_container_width=True)
+
+# ==========================================
+# RENDERIZAÇÃO DA PÁGINA ESCOLHIDA
+# ==========================================
+if page == "Liga Critical":
+    render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
+
+elif page == "Liga Versus":
+    render_league_page("Liga Versus", "league_versus", "comunicacoesVersus.txt")
+
+elif page == "Rankings Globais":
+    st.title("🌐 BBPT Global Power Rankings")
+    
+    comunicado = load_communications("comunicacoesGlobal.txt")
+    if comunicado:
+        st.info(f"📢 **Quadro de Avisos Global:**\n\n{comunicado}")
+        
+    st.markdown("O sistema oficial de Power Rating (ELO) baseado em todo o historial Ad-Hoc.")
+    df_rankings = pd.DataFrame(db['global_versus']['rankings'])
+    if not df_rankings.empty:
+        df_rankings.set_index('Rank', inplace=True)
+    st.dataframe(df_rankings, use_container_width=True)
+
+    st.divider()
+
+    render_advanced_metrics(db['global_versus'].get('advanced_metrics', {}), league_mode=False)
+
+elif page == "Ad-Hoc: Blader Profile":
+    st.title("👤 Blader Intelligence Profile")
+    
+    player_list = sorted(list(db['global_versus']['profiles'].keys()))
+    selected_player = st.selectbox("Selecione o Blader para análise detalhada:", player_list)
+    
+    if selected_player:
+        p_data = db['global_versus']['profiles'][selected_player]
+        
+        st.subheader("📊 Personal Match Record")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Global ELO", p_data['elo_global'])
+        c2.metric("Overall Win Rate", f"{p_data['win_rate']}%")
+        c3.metric("Total Matches", p_data['total_matches'])
+        c4.metric("Tournaments Won", p_data['tournaments_won'])
+
+        st.divider()
+
+        st.subheader("🤖 Pede Conselho ao teu AI Coach (Gratuito)")
+        st.markdown("""
+        Queres uma análise tática profunda ao teu perfil?  
+        1. Clica no ícone de **Copiar** no canto superior direito da caixa abaixo.  
+        2. Abre o teu assistente preferido (como o [Google Gemini](https://gemini.google.com/) ou o ChatGPT).  
+        3. Cola o texto gerado, envia e lê as dicas personalizadas para melhorares o teu jogo!
+        """)
+        st.code(p_data.get('ai_prompt', 'N/A'), language='text')
+
+        st.divider()
+
+        st.subheader("🎯 Player Matchups (With True Elo Probability)")
+        df_matchups = pd.DataFrame(p_data['matchups'])
+        if not df_matchups.empty:
+            df_matchups.index += 1
+            df_matchups.index.name = "#"
+        st.dataframe(df_matchups, use_container_width=True)
+
+        st.divider()
+
+        st.subheader("📖 Raw Match History")
+        df_history = pd.DataFrame(p_data['raw_matches'])
+        if not df_history.empty:
+            df_history.index += 1
+            df_history.index.name = "#"
+        st.dataframe(df_history, use_container_width=True)
