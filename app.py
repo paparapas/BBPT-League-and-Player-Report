@@ -3,8 +3,46 @@ import pandas as pd
 import json
 import os
 
-# 1. Configuração da Página (Mudar o ícone para o logo)
+import streamlit as st
+import pandas as pd
+import json
+import os
+
+# 1. Configuração da Página
 st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="logo.png")
+
+# ==========================================
+# 🛑 CSS MÁGICO PARA O BOTÃO MOBILE
+# ==========================================
+st.markdown("""
+<style>
+    /* Alvo: Botão de expandir o menu lateral */
+    [data-testid="collapsedControl"] {
+        background-color: #ff4b4b !important; /* Cor vermelha de destaque */
+        border-radius: 8px !important;
+        padding: 5px 15px !important;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
+        margin-top: 5px !important;
+        margin-left: 5px !important;
+        color: white !important;
+    }
+    
+    /* Mudar a cor do ícone da setinha para branco */
+    [data-testid="collapsedControl"] svg {
+        fill: white !important;
+        color: white !important;
+    }
+    
+    /* Adicionar a palavra MENU escrita ao lado do ícone */
+    [data-testid="collapsedControl"]::after {
+        content: "MENU";
+        font-family: sans-serif;
+        font-weight: 800;
+        font-size: 14px;
+        margin-left: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # 2. Carregar a Base de Dados
 @st.cache_data
