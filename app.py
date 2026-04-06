@@ -7,7 +7,7 @@ import os
 st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="logo.png")
 
 # ==========================================
-# 🛑 CSS MÁGICO PARA O BOTÃO MOBILE
+# 🛑 CSS MÁGICO PARA O BOTÃO MOBILE E FRAMES
 # ==========================================
 st.markdown("""
 <style>
@@ -64,13 +64,14 @@ if not db:
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.divider()
 st.sidebar.title("🛡️ BBPT Hub")
-# 👇 ADICIONADA A NOVA PÁGINA AQUI 👇
+# 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
 page = st.sidebar.radio("Navegação:", [
     "Liga Critical", 
     "Liga Versus", 
     "Torneio de Equipas - Liga Versus", 
     "Rankings Globais", 
-    "Ad-Hoc: Blader Profile"
+    "Ad-Hoc: Blader Profile",
+    "Contactos & Equipa"
 ])
 st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
 
@@ -147,40 +148,29 @@ if page == "Liga Critical":
 elif page == "Liga Versus":
     render_league_page("Liga Versus", "league_versus", "comunicacoesVersus.txt")
 
-# 👇 A TUA NOVA PÁGINA DO TORNEIO DE EQUIPAS 👇
 elif page == "Torneio de Equipas - Liga Versus":
     st.title("🤝 Torneio de Equipas - Liga Versus")
     
-    # A caixa de texto mágica (free format txt)
     comunicado = load_communications("comunicacoesEquipasVersus.txt")
     if comunicado:
         st.info(f"📢 **Quadro de Avisos:**\n\n{comunicado}")
     
     st.divider()
     
-    # --- COLUNAS LADO A LADO ---
     col1, col2 = st.columns(2)
     
     with col1:
-        # Secção com a Foto dos Standings
         st.subheader("📊 Standings Finais")
         st.markdown("Resultados oficiais do torneio de equipas.")
-        
-        # O Streamlit vai tentar ler esta imagem. Tens de a colocar no GitHub!
         try:
             st.image("foto_equipas.jpg", use_container_width=True)
         except Exception:
             st.warning("⚠️ Imagem 'foto_equipas.jpg' não encontrada. Por favor, faz o upload deste ficheiro no teu GitHub.")
             
     with col2:
-        # Secção com o Vídeo do YouTube
         st.subheader("📺 VOD do Torneio")
         st.markdown("Acompanha a ação a partir do momento chave!")
-        
-        # O start_time é em segundos (1319s). autoplay e muted ativados!
         st.video("https://youtu.be/vsbuwPL5uzs?si=egyuV9P3j8Gdfc6z", start_time=1319, autoplay=True, muted=True)
-
-# 👆 -------------------------------------- 👆
 
 elif page == "Rankings Globais":
     st.title("🌐 BBPT Global Power Rankings")
@@ -243,3 +233,36 @@ elif page == "Ad-Hoc: Blader Profile":
             df_history.index += 1
             df_history.index.name = "#"
         st.dataframe(df_history, use_container_width=True)
+
+# 👇 A NOVA PÁGINA DE CONTACTOS E EQUIPA 👇
+elif page == "Contactos & Equipa":
+    st.title("📞 Contactos & Organização")
+    
+    # Redes Sociais com Botões
+    st.subheader("🌐 Comunidade e Redes Sociais")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.link_button("📸 Instagram", "https://instagram.com/o_vosso_link", use_container_width=True)
+    with c2:
+        st.link_button("💬 Comunidade Whatsapp/Discord", "https://chat.whatsapp.com/o_vosso_link", use_container_width=True)
+    with c3:
+        st.link_button("📺 YouTube", "https://youtube.com/o_vosso_link", use_container_width=True)
+
+    st.divider()
+    
+    st.subheader("👥 Quadro da Organização e Gestão")
+    st.markdown("Conhece a equipa responsável pela manutenção e integridade da Liga BBPT.")
+    
+    # Carregar e processar o ficheiro de texto em Frames separados
+    conteudo_org = load_communications("organizacao.txt")
+    if conteudo_org:
+        # Corta o texto sempre que houver "==="
+        seccoes = conteudo_org.split("===")
+        
+        # O Streamlit coloca cada pedaço dentro de um quadro com borda!
+        for seccao in seccoes:
+            if seccao.strip():
+                with st.container(border=True):
+                    st.markdown(seccao.strip())
+    else:
+        st.info("Cria o ficheiro `organizacao.txt` no teu GitHub e usa `===` para separar as secções da tua equipa.")
