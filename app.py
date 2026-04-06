@@ -3,11 +3,6 @@ import pandas as pd
 import json
 import os
 
-import streamlit as st
-import pandas as pd
-import json
-import os
-
 # 1. Configuração da Página
 st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="logo.png")
 
@@ -18,7 +13,7 @@ st.markdown("""
 <style>
     /* Alvo: Botão de expandir o menu lateral */
     [data-testid="collapsedControl"] {
-        background-color: #ff4b4b !important; /* Cor vermelha de destaque */
+        background-color: #ff4b4b !important;
         border-radius: 8px !important;
         padding: 5px 15px !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
@@ -27,13 +22,11 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Mudar a cor do ícone da setinha para branco */
     [data-testid="collapsedControl"] svg {
         fill: white !important;
         color: white !important;
     }
     
-    /* Adicionar a palavra MENU escrita ao lado do ícone */
     [data-testid="collapsedControl"]::after {
         content: "MENU";
         font-family: sans-serif;
@@ -53,7 +46,6 @@ def load_data():
     except FileNotFoundError:
         return None
 
-# Função para ler os ficheiros de comunicações em tempo real
 def load_communications(file_path):
     if os.path.exists(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -69,11 +61,17 @@ if not db:
     st.stop()
 
 # 3. Menu de Navegação Lateral
-# --- COLOCAR O LOGO AQUI DE FORMA 'COOL' ---
 st.sidebar.image("logo.png", use_container_width=True)
-st.sidebar.divider() # Uma linha para separar o logo do menu
+st.sidebar.divider()
 st.sidebar.title("🛡️ BBPT Hub")
-page = st.sidebar.radio("Navegação:", ["Liga Critical", "Liga Versus", "Rankings Globais", "Ad-Hoc: Blader Profile"])
+# 👇 ADICIONADA A NOVA PÁGINA AQUI 👇
+page = st.sidebar.radio("Navegação:", [
+    "Liga Critical", 
+    "Liga Versus", 
+    "Torneio de Equipas - Liga Versus", 
+    "Rankings Globais", 
+    "Ad-Hoc: Blader Profile"
+])
 st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
 
 # ==========================================
@@ -95,7 +93,6 @@ def render_advanced_metrics(metrics, league_mode=True):
     st.caption("Dominates Swiss but struggles in Top Cut.")
     st.warning(metrics.get('gatekeeper', 'N/A'))
     
-    # --- META HEALTH CORRIGIDO E AJUSTADO AO BEYBLADE X ---
     st.markdown("### 📊 Meta-Health (Média de Pontos Combinados)")
     st.success(metrics.get('meta_health', 'N/A'))
     st.markdown("""
@@ -149,6 +146,39 @@ if page == "Liga Critical":
 
 elif page == "Liga Versus":
     render_league_page("Liga Versus", "league_versus", "comunicacoesVersus.txt")
+
+# 👇 A TUA NOVA PÁGINA DO TORNEIO DE EQUIPAS 👇
+elif page == "Torneio de Equipas - Liga Versus":
+    st.title("🤝 Torneio de Equipas - Liga Versus")
+    
+    # A caixa de texto mágica (free format txt)
+    comunicado = load_communications("comunicacoesEquipasVersus.txt")
+    if comunicado:
+        st.info(f"📢 **Quadro de Avisos:**\n\n{comunicado}")
+    
+    st.divider()
+    
+    # Secção com a Foto dos Standings
+    st.subheader("📊 Standings Finais")
+    st.markdown("Resultados oficiais do torneio de equipas.")
+    
+    # O Streamlit vai tentar ler esta imagem. Tens de a colocar no GitHub!
+    try:
+        st.image("foto_equipas.jpg", use_container_width=True)
+    except Exception:
+        st.warning("⚠️ Imagem 'foto_equipas.jpg' não encontrada. Por favor, faz o upload deste ficheiro no teu GitHub.")
+        
+    st.divider()
+    
+    # Secção com o Vídeo do YouTube
+    st.subheader("📺 VOD do Torneio")
+    st.markdown("Acompanha a ação a partir do momento chave!")
+    
+    # Coloca o link do teu vídeo aqui. 
+    # O start_time é em segundos. Por exemplo: 120 = 2 minutos.
+    st.video("https://youtu.be/vsbuwPL5uzs?si=egyuV9P3j8Gdfc6z", start_time=1319)
+
+# 👆 -------------------------------------- 👆
 
 elif page == "Rankings Globais":
     st.title("🌐 BBPT Global Power Rankings")
