@@ -245,7 +245,7 @@ elif page == "Contactos & Equipa":
     c1, c2, c3, c4 = st.columns(4) 
     
     with c1:
-        st.link_button("📸 Instagram", "https://instagram.com/o_vosso_link", use_container_width=True)
+        st.link_button("📸 Instagram", "https://www.instagram.com/beyblade_pt?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==", use_container_width=True)
     with c2:
         st.link_button("💬 Comunidade Whatsapp", "https://chat.whatsapp.com/GCLf0RjTFjFHzc1yK2VjPo?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAZXh0bgNhZW0CMTEAc3J0YwZhcHBfaWQMMjU2MjgxMDQwNTU4AAGnIfazCWNONck6v0j57JdRIIAkPFMdx9LHQt4GCOhw-8I_JqQ87GIcN_2x2hE_aem_dl79Vk4wQKv_jaj375kITg", use_container_width=True)
     with c3:
