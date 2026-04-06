@@ -244,9 +244,11 @@ elif page == "Contactos & Equipa":
     with c1:
         st.link_button("📸 Instagram", "https://instagram.com/o_vosso_link", use_container_width=True)
     with c2:
-        st.link_button("💬 Comunidade Whatsapp/Discord", "https://chat.whatsapp.com/o_vosso_link", use_container_width=True)
+        st.link_button("💬 Comunidade Whatsapp", "https://chat.whatsapp.com/GCLf0RjTFjFHzc1yK2VjPo?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAZXh0bgNhZW0CMTEAc3J0YwZhcHBfaWQMMjU2MjgxMDQwNTU4AAGnIfazCWNONck6v0j57JdRIIAkPFMdx9LHQt4GCOhw-8I_JqQ87GIcN_2x2hE_aem_dl79Vk4wQKv_jaj375kITg", use_container_width=True)
     with c3:
-        st.link_button("📺 YouTube", "https://youtube.com/o_vosso_link", use_container_width=True)
+        st.link_button("📺 YouTube", "https://www.youtube.com/@BeybladePortugal", use_container_width=True)
+    with c4:
+        st.link_button("📺 Discord", "https://discord.com/invite/KssWPXxFnq?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAZXh0bgNhZW0CMTEAc3J0YwZhcHBfaWQMMjU2MjgxMDQwNTU4AAGnAEkk3ND2fdA8LQvrbAdxUFX_ErELi5XLZ_AqvTn-rxJ1Prtbh2crvWzNoKg_aem_eHLufOmDJBHm4oWRy1I3cQ", use_container_width=True)
 
     st.divider()
     
