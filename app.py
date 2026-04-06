@@ -3,8 +3,8 @@ import pandas as pd
 import json
 import os
 
-# 1. Configuração da Página
-st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="🛡️")
+# 1. Configuração da Página (Mudar o ícone para o logo)
+st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="logo.png")
 
 # 2. Carregar a Base de Dados
 @st.cache_data
@@ -31,6 +31,9 @@ if not db:
     st.stop()
 
 # 3. Menu de Navegação Lateral
+# --- COLOCAR O LOGO AQUI DE FORMA 'COOL' ---
+st.sidebar.image("logo.png", use_container_width=True)
+st.sidebar.divider() # Uma linha para separar o logo do menu
 st.sidebar.title("🛡️ BBPT Hub")
 page = st.sidebar.radio("Navegação:", ["Liga Critical", "Liga Versus", "Rankings Globais", "Ad-Hoc: Blader Profile"])
 st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
