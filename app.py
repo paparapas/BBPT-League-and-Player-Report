@@ -240,7 +240,10 @@ elif page == "Contactos & Equipa":
     
     # Redes Sociais com Botões
     st.subheader("🌐 Comunidade e Redes Sociais")
-    c1, c2, c3 = st.columns(3)
+    
+    # 🔥 CORREÇÃO AQUI: 4 COLUNAS EM VEZ DE 3 🔥
+    c1, c2, c3, c4 = st.columns(4) 
+    
     with c1:
         st.link_button("📸 Instagram", "https://instagram.com/o_vosso_link", use_container_width=True)
     with c2:
