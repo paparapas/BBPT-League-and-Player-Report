@@ -158,25 +158,27 @@ elif page == "Torneio de Equipas - Liga Versus":
     
     st.divider()
     
-    # Secção com a Foto dos Standings
-    st.subheader("📊 Standings Finais")
-    st.markdown("Resultados oficiais do torneio de equipas.")
+    # --- COLUNAS LADO A LADO ---
+    col1, col2 = st.columns(2)
     
-    # O Streamlit vai tentar ler esta imagem. Tens de a colocar no GitHub!
-    try:
-        st.image("foto_equipas.jpg", use_container_width=True)
-    except Exception:
-        st.warning("⚠️ Imagem 'foto_equipas.jpg' não encontrada. Por favor, faz o upload deste ficheiro no teu GitHub.")
+    with col1:
+        # Secção com a Foto dos Standings
+        st.subheader("📊 Standings Finais")
+        st.markdown("Resultados oficiais do torneio de equipas.")
         
-    st.divider()
-    
-    # Secção com o Vídeo do YouTube
-    st.subheader("📺 VOD do Torneio")
-    st.markdown("Acompanha a ação a partir do momento chave!")
-    
-    # Coloca o link do teu vídeo aqui. 
-    # O start_time é em segundos. Por exemplo: 120 = 2 minutos.
-    st.video("https://youtu.be/vsbuwPL5uzs?si=egyuV9P3j8Gdfc6z", start_time=1319)
+        # O Streamlit vai tentar ler esta imagem. Tens de a colocar no GitHub!
+        try:
+            st.image("foto_equipas.jpg", use_container_width=True)
+        except Exception:
+            st.warning("⚠️ Imagem 'foto_equipas.jpg' não encontrada. Por favor, faz o upload deste ficheiro no teu GitHub.")
+            
+    with col2:
+        # Secção com o Vídeo do YouTube
+        st.subheader("📺 VOD do Torneio")
+        st.markdown("Acompanha a ação a partir do momento chave!")
+        
+        # O start_time é em segundos (1319s). autoplay e muted ativados!
+        st.video("https://youtu.be/vsbuwPL5uzs?si=egyuV9P3j8Gdfc6z", start_time=1319, autoplay=True, muted=True)
 
 # 👆 -------------------------------------- 👆
 
