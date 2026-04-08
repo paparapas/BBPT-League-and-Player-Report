@@ -2,16 +2,18 @@
 Responsáveis pela gestão logística, agendamento e saúde geral da Liga.
 * **Osga** (Admin/TO)
 * **Benitez** (Admin/TO)
+* **Amostra** (Admin/TO)
+* **Z|ro** (TO)
 * **Dexter** (TO)
 * **Xazus** (TO)
 * **MiguelBigG** (TO)
 * **Paparapas** (TO)
-* **Amostra** (TO)
+
 
 ===
 ### ⚖️ Head Judges (HJu)
 Garantem o rigor oficial do jogo e têm a última palavra em decisões dúbias e faltas técnicas.
-* **Dexter** 
+* **Z|ro**
 * **Xazus**
 
 
@@ -30,7 +32,7 @@ Apoio crucial na arena para garantir que todas as regras de lançamento, pontos 
 * **Bufos**
 * **Wyde**
 * **Yuto**
-* **Z|ro**
+* **Dexter**
 * **Galaider**
 
 
