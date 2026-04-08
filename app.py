@@ -4,7 +4,11 @@ import json
 import os
 
 # 1. Configuração da Página
-st.set_page_config(page_title="BBPT League Hub", layout="wide", page_icon="logo.png")
+st.set_page_config(
+    page_title="BBPT Hub", 
+    page_icon="logo.png",  # <-- ESTA É A MAGIA
+    layout="wide"
+)
 
 # ==========================================
 # 🛑 CSS MÁGICO PARA O BOTÃO MOBILE E FRAMES
