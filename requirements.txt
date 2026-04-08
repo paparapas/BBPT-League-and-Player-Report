@@ -4,3 +4,4 @@ openpyxl
 gspread
 requests
 google-auth
+streamlit-keyup
