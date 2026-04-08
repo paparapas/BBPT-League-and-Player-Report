@@ -235,9 +235,16 @@ event_status = get_event_status_cached()
 
 if menu == "📝 Formulário Público":
     st.title("📝 BBPT League - Deck Check")
+    
     if not event_status["is_open"]:
         st.warning("🔒 Check-in Fechado.")
         st.stop()
+    
+    # --- NOVA LINHA: Mostrar o nome do evento com destaque ---
+    st.info(f"🏆 **A submeter para o evento:** {event_status['event_name']}")
+    
+    recs_list = get_all_records_cached(event_status["event_name"])
+    st.metric("Decks Submetidos", len(recs_list))
     
     recs_list = get_all_records_cached(event_status["event_name"])
     st.metric("Decks Submetidos", len(recs_list))
