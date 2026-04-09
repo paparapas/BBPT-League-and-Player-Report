@@ -142,12 +142,16 @@ def load_parts():
             all_v = [col for col in df.columns if "Unnamed" not in str(col)] + df.values.flatten().tolist()
             return sorted(list(set([str(x).strip() for x in all_v if pd.notna(x) and str(x).strip() not in ['-', '', 'nan']])))
         return {
-            "main_blades": get_clean_list('Blades (BX, UX, CX Main)'), "ratchets": get_clean_list('Ratchets'),
-            "bits": get_clean_list('Bits'), "assist_blades": get_clean_list('Assist Blades'),
-            "metal_blades": get_clean_list('Metal Blades'), "over_blades": get_clean_list('Over Blades'),
+            "bx_ux_blades": get_clean_list('Blades BX-UX'),  # <-- Nova lista separada
+            "cx_blades": get_clean_list('Blades CX'),        # <-- Nova lista separada
+            "ratchets": get_clean_list('Ratchets'),
+            "bits": get_clean_list('Bits'), 
+            "assist_blades": get_clean_list('Assist Blades'),
+            "metal_blades": get_clean_list('Metal Blades'), 
+            "over_blades": get_clean_list('Over Blades'),
             "lock_chips": get_clean_list('Lock Chips')
         }, alias_map
-    except: return {k: [] for k in ["main_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
+    except: return {k: [] for k in ["bx_ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
 
 def load_players():
     players = ["-- Selecionar Jogador --", "Outro (Novo Jogador)"]
@@ -163,23 +167,25 @@ def parse_smart_combo(text, parts_dict, alias_map):
     words = text.split()
     words_cl = [re.sub(r'[^a-zA-Z0-9]', '', w).lower() for w in words]
     text_cl = "".join(words_cl)
-    cats = [("over_blades", "over_blade"), ("metal_blades", "metal_blade"), ("main_blades", "main_blade"), ("assist_blades", "assist_blade"), ("ratchets", "ratchet"), ("bits", "bit"), ("lock_chips", "lock_chip")]
+    
+    # Cria uma lista temporária que junta todas as main blades para procurar
+    temp_dict = parts_dict.copy()
+    temp_dict["all_main_blades"] = parts_dict.get("bx_ux_blades", []) + parts_dict.get("cx_blades", [])
+    
+    cats = [("over_blades", "over_blade"), ("metal_blades", "metal_blade"), ("all_main_blades", "main_blade"), ("assist_blades", "assist_blade"), ("ratchets", "ratchet"), ("bits", "bit"), ("lock_chips", "lock_chip")]
     
     for cat, key in cats:
         best, r_max = "--", 0
-        
-        # 1. Pesquisa por Aliases (Bits)
         if cat == "bits":
             for al, mp in sorted(alias_map.items(), key=lambda x: len(x[0]), reverse=True):
                 if re.sub(r'[^a-zA-Z0-9]', '', al).lower() in words_cl:
                     best = mp; break
             if best != "--": parsed[key] = best; continue
             
-        # 2. Pesquisa Fuzzy Order-Agnostic
-        for p in sorted(parts_dict.get(cat, []), key=len, reverse=True):
+        for p in sorted(temp_dict.get(cat, []), key=len, reverse=True):
             p_cl = re.sub(r'[^a-zA-Z0-9]', '', p).lower()
             if p_cl and p_cl in text_cl: 
-                best = p; break # Match sequencial perfeito
+                best = p; break 
                 
             p_words = re.sub(r'[^a-zA-Z0-9\s]', '', p).lower().split()
             if not p_words: continue
@@ -198,9 +204,13 @@ def parse_smart_combo(text, parts_dict, alias_map):
                 
         parsed[key] = best
 
-    if parsed["over_blade"] != "--" or parsed["metal_blade"] != "--": parsed["type"] = "CX Expanded"
-    elif parsed["assist_blade"] != "--": parsed["type"] = "CX"
-    else: parsed["type"] = "Standard (BX / UX)"
+    # Inteligência de Inferência de Formato:
+    if parsed["over_blade"] != "--" or parsed["metal_blade"] != "--": 
+        parsed["type"] = "CX Expanded"
+    elif parsed["assist_blade"] != "--" or parsed["main_blade"] in parts_dict.get("cx_blades", []): 
+        parsed["type"] = "CX" # Se a main blade for do Excel CX, muda sozinho!
+    else: 
+        parsed["type"] = "Standard (BX / UX)"
     
     if parsed["type"] in ["CX", "CX Expanded"] and parsed["lock_chip"] == "--" and words:
         parsed["lock_chip"] = words[0].capitalize()
@@ -307,14 +317,16 @@ if menu == "📝 Formulário Público":
             
             if ct == "Standard (BX / UX)":
                 c1, c2, c3 = st.columns([2, 1, 1])
-                c1.selectbox("Blade", ["--"]+parts["main_blades"], key=f"c_{i}_main_blade")
+                # APENAS AS LÂMINAS BX/UX
+                c1.selectbox("Blade", ["--"]+parts["bx_ux_blades"], key=f"c_{i}_main_blade")
                 c2.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c3.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
             elif ct == "CX":
                 c1, c2, c3, c4, c5 = st.columns([1.5, 2, 2, 1.2, 1.2])
                 if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
                 else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
-                c2.selectbox("Main", ["--"]+parts["main_blades"], key=f"c_{i}_main_blade")
+                # APENAS AS LÂMINAS CX
+                c2.selectbox("Main", ["--"]+parts["cx_blades"], key=f"c_{i}_main_blade")
                 c3.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
                 c4.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c5.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
