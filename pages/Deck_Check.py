@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.ERROR, format='%(asctime)s [%(levelname)s] %(m
 
 DATASET_PARTS = "Dataset_BeybladeParts.xlsx"
 DB_MASTER = "bbpt_master_db.json"
-ADMIN_PASSWORD = "bbpt" 
+ADMIN_PASSWORD = "bbpt-paparapas" 
 
 # ==========================================
 # INTEGRAÇÃO CLOUD: GOOGLE SHEETS E IMGBB
