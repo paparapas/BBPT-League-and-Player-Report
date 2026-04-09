@@ -2,6 +2,6 @@ streamlit
 pandas
 openpyxl
 gspread
-requests
 google-auth
+requests
 streamlit-keyup
