@@ -8,7 +8,7 @@ import json
 import os
 import difflib
 import re
-from streamlit_keyup import st_keyup
+from st_keyup import st_keyup
 
 # ==========================================
 # CONFIGURAÇÕES INICIAIS E CONSTANTES
