@@ -202,7 +202,7 @@ elif page == "Ad-Hoc: Blader Profile":
     if selected_player:
         p_data = db['global_versus']['profiles'][selected_player]
         
-# --- 1. EXTRACÇÃO DE DADOS E CÁLCULOS A PARTIR DO JSON ---
+        # --- 1. EXTRACÇÃO DE DADOS E CÁLCULOS A PARTIR DO JSON ---
         total_jogadores = len(db['global_versus']['profiles'])
         
         rank_atual = "N/A"
@@ -342,8 +342,25 @@ elif page == "Ad-Hoc: Blader Profile":
         st.subheader("🎯 Player Matchups (With True Elo Probability)")
         df_matchups = pd.DataFrame(p_data['matchups'])
         if not df_matchups.empty:
+            # Calcula as derrotas
+            df_matchups['Losses'] = df_matchups['Games'] - df_matchups['Wins']
+            
+            # Cria a barra proporcional (10 Blocos = 100%)
+            def criar_barra_proporcional(wins, games):
+                if games == 0: return '⬜' * 10
+                racio_vitorias = wins / games
+                blocos_verdes = int(round(racio_vitorias * 10))
+                blocos_vermelhos = 10 - blocos_verdes
+                return '🟩' * blocos_verdes + '🟥' * blocos_vermelhos
+            
+            df_matchups['Win/Loss Ratio'] = df_matchups.apply(lambda row: criar_barra_proporcional(row['Wins'], row['Games']), axis=1)
+            
+            # Reorganiza as colunas
+            df_matchups = df_matchups[['Opponent', 'Games', 'Wins', 'Losses', 'Win/Loss Ratio', 'Win Likelihood (Elo)']]
+            
             df_matchups.index += 1
             df_matchups.index.name = "#"
+            
         st.dataframe(df_matchups, use_container_width=True)
 
         st.divider()
