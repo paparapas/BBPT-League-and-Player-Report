@@ -339,13 +339,14 @@ elif page == "Ad-Hoc: Blader Profile":
 
         st.divider()
 
-        st.subheader("🎯 Player Matchups (With True Elo Probability)")
+st.subheader("🎯 Player Matchups (With True Elo Probability)")
         df_matchups = pd.DataFrame(p_data['matchups'])
         if not df_matchups.empty:
             # Calcula as derrotas
             df_matchups['Losses'] = df_matchups['Games'] - df_matchups['Wins']
             
-            # Calcula a percentagem de vitórias de 0 a 100 para a barra de progresso
+            # --- NOVA LÓGICA: BARRA VERDE COM PANDAS STYLER ---
+            # Calcula a percentagem de vitórias de 0 a 100
             df_matchups['Win Rate %'] = (df_matchups['Wins'] / df_matchups['Games']) * 100
             
             # Reorganiza as colunas
@@ -354,29 +355,18 @@ elif page == "Ad-Hoc: Blader Profile":
             df_matchups.index += 1
             df_matchups.index.name = "#"
             
-        # Desenha a tabela com a Barra de Progresso Nativa
-        st.dataframe(
-            df_matchups, 
-            use_container_width=True,
-            column_config={
-                "Win Rate %": st.column_config.ProgressColumn(
-                    "Win Rate %",
-                    help="Barra visual da percentagem de vitórias",
-                    format="%.1f%%",
-                    min_value=0,
-                    max_value=100,
-                )
-            }
-        )
-
-        st.divider()
-
-        st.subheader("📖 Raw Match History")
-        df_history = pd.DataFrame(p_data['raw_matches'])
-        if not df_history.empty:
-            df_history.index += 1
-            df_history.index.name = "#"
-        st.dataframe(df_history, use_container_width=True)
+            # Desenha a tabela forçando a barra a ser Verde
+            st.dataframe(
+                df_matchups.style.format({'Win Rate %': '{:.1f}%'}).bar(
+                    subset=['Win Rate %'], 
+                    color='#4CAF50',  # Cor Verde exata
+                    vmin=0, 
+                    vmax=100
+                ),
+                use_container_width=True
+            )
+        else:
+            st.dataframe(df_matchups, use_container_width=True)
 
 # 👇 A NOVA PÁGINA DE CONTACTOS E EQUIPA 👇
 elif page == "Contactos & Equipa":
