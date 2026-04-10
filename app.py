@@ -211,35 +211,52 @@ elif page == "Ad-Hoc: Blader Profile":
                 rank_atual = r['Rank']
                 break
                 
-        # Descobrir o Total de Eventos Únicos jogados na Liga inteira
-        todas_as_raw_matches = []
-        for player_prof in db['global_versus']['profiles'].values():
-            todas_as_raw_matches.extend(player_prof.get('raw_matches', []))
-        total_eventos_liga = len(set(m['Event_Name'] for m in todas_as_raw_matches if 'Event_Name' in m))
+        # Total Eventos da Liga (O máximo de eventos jogados por algum jogador)
+        total_eventos_liga = max((prof.get('events_played', 0) for prof in db['global_versus']['profiles'].values()), default=0)
         
-        # Vitórias e Derrotas (Somadas dos Matchups)
-        total_wins = sum(m.get('W', 0) for m in p_data.get('matchups', []))
-        total_losses = sum(m.get('L', 0) for m in p_data.get('matchups', []))
-        
-        # Torneios e Classificações (Lido do dicionário "placements")
-        placements = p_data.get('placements', {})
-        events_played = sum(placements.values())
-        
-        tournaments_won = p_data.get('tournaments_won', 0)
-        first_place = placements.get("1", 0)
-        second_place = placements.get("2", 0)
-        third_place = placements.get("3", 0)
-        fifth_place = placements.get("5", 0)
-        
-        # Missed Top Cut (Qualquer lugar que não seja 1 a 8)
-        top_cut_places = ["1", "2", "3", "4", "5", "6", "7", "8"]
-        made_top_cut = sum(placements.get(str(p), 0) for p in top_cut_places)
-        missed_top_cut = events_played - made_top_cut
-        
-        win_rate = p_data.get('win_rate', 0)
+        # Matemática de Vitórias e Derrotas
         total_matches = p_data.get('total_matches', 0)
+        total_wins = sum(m.get('Wins', 0) for m in p_data.get('matchups', []))
+        total_losses = total_matches - total_wins
+        win_rate = p_data.get('win_rate', 0)
         
-        # --- 2. INTERFACE VISUAL (MÉTRICAS) ---
+        events_played = p_data.get('events_played', 0)
+        tournaments_won = p_data.get('tournaments_won', 0)
+        
+        # Extrair os Pódios (Lendo de forma inteligente o AI Prompt do teu JSON)
+        first_place = 0
+        second_place = 0
+        third_place = 0
+        fifth_place = 0
+        made_top_cut = 0
+        
+        prompt_text = p_data.get('ai_prompt', '')
+        import re
+        podios_match = re.search(r'- Histórico de Pódios:\s*([^\n]+)', prompt_text)
+        if podios_match:
+            podios_str = podios_match.group(1)
+            if "Nenhum" not in podios_str and "No Top" not in podios_str:
+                for item in podios_str.split(','):
+                    item = item.strip()
+                    if 'x' in item:
+                        try:
+                            qtd_str, pos_str = item.split('x')
+                            qtd = int(qtd_str.strip())
+                            pos = pos_str.strip().lower()
+                            
+                            if '1st' in pos: first_place += qtd
+                            elif '2nd' in pos: second_place += qtd
+                            elif '3rd' in pos: third_place += qtd
+                            elif '5th' in pos: fifth_place += qtd
+                            
+                            made_top_cut += qtd
+                        except:
+                            pass
+        
+        missed_top_cut = events_played - made_top_cut
+        if missed_top_cut < 0: missed_top_cut = 0
+
+        # --- 2. INTERFACE VISUAL ---
         st.markdown(f"## *{selected_player} | Rank: {rank_atual} of {total_jogadores} players*")
         st.divider()
 
@@ -260,13 +277,17 @@ elif page == "Ad-Hoc: Blader Profile":
                 st.markdown(f"<h2 style='text-align: center; color: #F44336; margin: 0;'>{total_losses}</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Total Losses</p>", unsafe_allow_html=True)
 
-        c4, _, _ = st.columns(3)
+        c4, c5, _ = st.columns(3)
         with c4:
             with st.container(border=True):
                 st.markdown(f"<h2 style='text-align: center; margin: 0;'>{total_matches}</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Total Matches</p>", unsafe_allow_html=True)
+        with c5:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; color: #9C27B0; margin: 0;'>{p_data.get('elo_global', 'N/A')}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Global ELO</p>", unsafe_allow_html=True)
 
-        st.write("") 
+        st.write("")
 
         st.markdown("#### Tournament Placements Record")
         st.caption("Breakdown of final ranks achieved and overall event participation.")
