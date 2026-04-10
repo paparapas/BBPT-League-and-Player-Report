@@ -381,7 +381,7 @@ if menu == "📝 Formulário Público":
         
         for i in range(st.session_state.num_combos):
             ct = st.session_state[f"c_{i}_type"]; cd = {"type": ct, "combo_number": i+1}
-            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "metal_blade", "over_blade", "assist_blade", "ratchet", "bit"]
+            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "over_blade", "metal_blade" , "assist_blade", "ratchet", "bit"]
             
             for k in ks:
                 v = st.session_state.get(f"c_{i}_{k}", "--")
@@ -420,7 +420,7 @@ if menu == "📝 Formulário Público":
                     if chip in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{cd['lock_chip']}' está repetido!"
                     used_chips.add(chip)
 
-        if name == "-- Selecionar Jogador --" or not name.strip(): st.error("⚠️ Por favor, identifica-te.")
+        if name == "-- Selecionar --" or not name.strip(): st.error("⚠️ Por favor, identifica-te.")
         elif missing_parts: st.error("⚠️ Faltam peças! Preenche todas as opções do teu deck.")
         elif has_duplicates: st.error(f"⚠️ **Regra de Deck Check:** {dup_error_msg}")
         elif not up: st.error("⚠️ Faltou anexar a prova fotográfica do deck!")
