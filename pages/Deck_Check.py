@@ -360,8 +360,8 @@ if menu == "📝 Formulário Público":
                 c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2, 2, 2, 1.2, 1.2])
                 if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
                 else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
-                c3.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"c_{i}_metal_blade")
-                c2.selectbox("Over", ["--"]+parts["over_blades"], key=f"c_{i}_over_blade")
+                c2.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"c_{i}_metal_blade")
+                c3.selectbox("Over", ["--"]+parts["over_blades"], key=f"c_{i}_over_blade")
                 c4.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
                 c5.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c6.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
@@ -381,7 +381,7 @@ if menu == "📝 Formulário Público":
         
         for i in range(st.session_state.num_combos):
             ct = st.session_state[f"c_{i}_type"]; cd = {"type": ct, "combo_number": i+1}
-            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "over_blade", "metal_blade" , "assist_blade", "ratchet", "bit"]
+            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
             
             for k in ks:
                 v = st.session_state.get(f"c_{i}_{k}", "--")
