@@ -1,7 +1,8 @@
 Esta é a pagina dos rankings.
-Por motivos de simplificação é baseada em todos os torneios da Versus Gaming Center desde o seu torneio inaugural.
+### :black[**Por motivos de simplificação é baseada em todos os torneios da Versus Gaming Center desde o seu torneio inaugural.**]
+### :black[**Para subires neste ranking deverás participar nos eventos desta loja que atualmente são aqules onde existem mais jogadores a participar.**]
 
-Esta será considerada a Season I, que para já ainda não tem duração definida.
+### :black[**Esta será considerada a Season I, que para já terá duração indeterminada.**]
 
-Seja Torneio de Liga ou Torneio normal, continua a aparecer e sobe no ranking!
+### :black[**Seja Torneio de Liga ou Torneio normal, continua a aparecer e sobe no ranking!**]
 
