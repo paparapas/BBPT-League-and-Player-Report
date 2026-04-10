@@ -339,7 +339,7 @@ elif page == "Ad-Hoc: Blader Profile":
 
         st.divider()
 
-st.subheader("🎯 Player Matchups (With True Elo Probability)")
+        st.subheader("🎯 Player Matchups (With True Elo Probability)")
         df_matchups = pd.DataFrame(p_data.get('matchups', []))
         
         if not df_matchups.empty:
