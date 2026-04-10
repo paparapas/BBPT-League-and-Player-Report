@@ -202,12 +202,108 @@ elif page == "Ad-Hoc: Blader Profile":
     if selected_player:
         p_data = db['global_versus']['profiles'][selected_player]
         
-        st.subheader("📊 Personal Match Record")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Global ELO", p_data['elo_global'])
-        c2.metric("Overall Win Rate", f"{p_data['win_rate']}%")
-        c3.metric("Total Matches", p_data['total_matches'])
-        c4.metric("Tournaments Won", p_data['tournaments_won'])
+# --- 1. EXTRACÇÃO DE DADOS E CÁLCULOS A PARTIR DO JSON ---
+        total_jogadores = len(db['global_versus']['profiles'])
+        
+        rank_atual = "N/A"
+        for r in db['global_versus'].get('rankings', []):
+            if r['Player'] == selected_player:
+                rank_atual = r['Rank']
+                break
+                
+        # Descobrir o Total de Eventos Únicos jogados na Liga inteira
+        todas_as_raw_matches = []
+        for player_prof in db['global_versus']['profiles'].values():
+            todas_as_raw_matches.extend(player_prof.get('raw_matches', []))
+        total_eventos_liga = len(set(m['Event_Name'] for m in todas_as_raw_matches if 'Event_Name' in m))
+        
+        # Vitórias e Derrotas (Somadas dos Matchups)
+        total_wins = sum(m.get('W', 0) for m in p_data.get('matchups', []))
+        total_losses = sum(m.get('L', 0) for m in p_data.get('matchups', []))
+        
+        # Torneios e Classificações (Lido do dicionário "placements")
+        placements = p_data.get('placements', {})
+        events_played = sum(placements.values())
+        
+        tournaments_won = p_data.get('tournaments_won', 0)
+        first_place = placements.get("1", 0)
+        second_place = placements.get("2", 0)
+        third_place = placements.get("3", 0)
+        fifth_place = placements.get("5", 0)
+        
+        # Missed Top Cut (Qualquer lugar que não seja 1 a 8)
+        top_cut_places = ["1", "2", "3", "4", "5", "6", "7", "8"]
+        made_top_cut = sum(placements.get(str(p), 0) for p in top_cut_places)
+        missed_top_cut = events_played - made_top_cut
+        
+        win_rate = p_data.get('win_rate', 0)
+        total_matches = p_data.get('total_matches', 0)
+        
+        # --- 2. INTERFACE VISUAL (MÉTRICAS) ---
+        st.markdown(f"## *{selected_player} | Rank: {rank_atual} of {total_jogadores} players*")
+        st.divider()
+
+        st.markdown("#### Personal Match Record")
+        st.caption("Overview of your absolute win/loss performance across all matches.")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; color: #a1e533; margin: 0;'>{win_rate}%</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Overall Win Rate</p>", unsafe_allow_html=True)
+        with c2:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; color: #4CAF50; margin: 0;'>{total_wins}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Total Wins</p>", unsafe_allow_html=True)
+        with c3:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; color: #F44336; margin: 0;'>{total_losses}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Total Losses</p>", unsafe_allow_html=True)
+
+        c4, _, _ = st.columns(3)
+        with c4:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{total_matches}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Total Matches</p>", unsafe_allow_html=True)
+
+        st.write("") 
+
+        st.markdown("#### Tournament Placements Record")
+        st.caption("Breakdown of final ranks achieved and overall event participation.")
+
+        t1, t2, t3 = st.columns(3)
+        with t1:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{events_played} <span style='font-size: 0.5em; color: gray;'>/ {total_eventos_liga}</span></h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Events Played</p>", unsafe_allow_html=True)
+        with t2:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{tournaments_won}</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Tournaments Won</p>", unsafe_allow_html=True)
+
+        t4, t5, t6 = st.columns(3)
+        with t4:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{first_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #FFD700; margin: 0;'>🥇 1st Place</p>", unsafe_allow_html=True)
+        with t5:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{second_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #C0C0C0; margin: 0;'>🥈 2nd Place</p>", unsafe_allow_html=True)
+        with t6:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{third_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #CD7F32; margin: 0;'>🥉 3rd Place</p>", unsafe_allow_html=True)
+
+        t7, t8, _ = st.columns(3)
+        with t7:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{fifth_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>5th Place</p>", unsafe_allow_html=True)
+        with t8:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; color: #F44336; margin: 0;'>{missed_top_cut}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>❌ Missed Top Cut</p>", unsafe_allow_html=True)
 
         st.divider()
 
