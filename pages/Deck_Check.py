@@ -97,7 +97,7 @@ def save_submission_cloud(player_name, combos, img_file, event_name):
     for c in combos:
         if c['type'] == 'Standard (BX / UX)': c_strs.append(f"{c.get('main_blade')} | {c.get('ratchet')} | {c.get('bit')}")
         elif c['type'] == 'CX': c_strs.append(f"{c.get('lock_chip')} | {c.get('main_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
-        else: c_strs.append(f"{c.get('lock_chip')} | {c.get('over_blade')} | {c.get('metal_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
+        else: c_strs.append(f"{c.get('lock_chip')} | {c.get('metal_blade')} | {c.get('over_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
     while len(c_strs) < 4: c_strs.append("")
     client = get_gsheet_client()
     sheet = client.open_by_key(get_sheet_id())
@@ -325,7 +325,7 @@ if menu == "📝 Formulário Público":
             elif m["type"] == "CX":
                 display_text = f"{m.get('lock_chip')} | {m.get('main_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
             else: # CX Expanded
-                display_text = f"{m.get('lock_chip')} | {m.get('over_blade')} | {m.get('metal_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
+                display_text = f"{m.get('lock_chip')} | {m.get('metal_blade')} | {m.get('over_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
                 
             st.info(f"🧩 Detetado ({m['type']}): {display_text}")
             
@@ -360,8 +360,8 @@ if menu == "📝 Formulário Público":
                 c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2, 2, 2, 1.2, 1.2])
                 if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
                 else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
-                c2.selectbox("Over", ["--"]+parts["over_blades"], key=f"c_{i}_over_blade")
                 c3.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"c_{i}_metal_blade")
+                c2.selectbox("Over", ["--"]+parts["over_blades"], key=f"c_{i}_over_blade")
                 c4.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
                 c5.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c6.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
@@ -381,7 +381,7 @@ if menu == "📝 Formulário Público":
         
         for i in range(st.session_state.num_combos):
             ct = st.session_state[f"c_{i}_type"]; cd = {"type": ct, "combo_number": i+1}
-            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "over_blade", "metal_blade", "assist_blade", "ratchet", "bit"]
+            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "metal_blade", "over_blade", "assist_blade", "ratchet", "bit"]
             
             for k in ks:
                 v = st.session_state.get(f"c_{i}_{k}", "--")
@@ -450,7 +450,7 @@ if menu == "📝 Formulário Público":
             for c in combos:
                 if c['type'] == 'Standard (BX / UX)': discord_text += f"🔹 **Combo {c['combo_number']}:** {c['main_blade']} | {c['ratchet']} | {c['bit']}\n"
                 elif c['type'] == 'CX': discord_text += f"🔹 **Combo {c['combo_number']} (CX):** {c['lock_chip']} | {c['main_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
-                elif c['type'] == 'CX Expanded': discord_text += f"🔹 **Combo {c['combo_number']} (CX Exp):** {c['lock_chip']} | {c['over_blade']} | {c['metal_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
+                elif c['type'] == 'CX Expanded': discord_text += f"🔹 **Combo {c['combo_number']} (CX Exp):** {c['lock_chip']} | {c['metal_blade']} | {c['over_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
             
             sum_c1, sum_c2 = st.columns([3, 2])
             with sum_c1:
