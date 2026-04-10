@@ -158,18 +158,19 @@ def get_dynamic_player_list():
     jogadores_oficiais = []
     try:
         import json
-        with open("bbpt_master_db.json", "r", encoding="utf-8") as f:
+        with open(DB_MASTER, "r", encoding="utf-8") as f:
             db = json.load(f)
-            profiles = db.get("global_versus", {}).get("profiles", [])
-            for p in profiles:
-                if isinstance(p, dict) and "name" in p: jogadores_oficiais.append(p["name"])
-                elif isinstance(p, str): jogadores_oficiais.append(p)
+            # Lê diretamente as chaves do teu JSON como o teu código original fazia
+            perfis = db.get("global_versus", {}).get("profiles", {})
+            jogadores_oficiais = list(perfis.keys())
     except: pass
 
     jogadores_novos = []
     try:
-        sheet_jogadores = client.open_by_key(get_sheet_id()).worksheet("Jogadores")
-        jogadores_novos = sheet_jogadores.col_values(1)[1:]
+        # A CORREÇÃO ESTÁ AQUI: Usar a tua função get_gsheet_client()
+        cliente_google = get_gsheet_client()
+        sheet_jogadores = cliente_google.open_by_key(get_sheet_id()).worksheet("Jogadores")
+        jogadores_novos = sheet_jogadores.col_values(1)[1:] # Ignora a linha 1 (o cabeçalho "Nome")
     except: pass
 
     todos = list(set(jogadores_oficiais + jogadores_novos))
