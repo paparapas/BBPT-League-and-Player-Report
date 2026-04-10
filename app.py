@@ -339,14 +339,14 @@ elif page == "Ad-Hoc: Blader Profile":
 
         st.divider()
 
-        st.subheader("🎯 Player Matchups (With True Elo Probability)")
+st.subheader("🎯 Player Matchups (With True Elo Probability)")
         df_matchups = pd.DataFrame(p_data.get('matchups', []))
         
         if not df_matchups.empty:
             # Calcula as derrotas
             df_matchups['Losses'] = df_matchups['Games'] - df_matchups['Wins']
             
-            # Calcula a percentagem de vitórias de 0 a 100
+            # Calcula a percentagem como NÚMERO (obrigatório para a barra funcionar)
             df_matchups['Win Rate %'] = (df_matchups['Wins'] / df_matchups['Games']) * 100
             
             # Reorganiza as colunas
@@ -355,14 +355,20 @@ elif page == "Ad-Hoc: Blader Profile":
             df_matchups.index += 1
             df_matchups.index.name = "#"
             
-            # Aplica o estilo de barra Verde contínua
-            styled_df = df_matchups.style.format({'Win Rate %': '{:.1f}%'}).bar(
-                subset=['Win Rate %'], 
-                color='#4CAF50', 
-                vmin=0, 
-                vmax=100
+            # Usa a Barra Nativa do Streamlit (Robusta e contínua)
+            st.dataframe(
+                df_matchups, 
+                use_container_width=True,
+                column_config={
+                    "Win Rate %": st.column_config.ProgressColumn(
+                        "Win Rate %",
+                        help="Barra visual da percentagem de vitórias",
+                        format="%.1f %%",
+                        min_value=0,
+                        max_value=100,
+                    )
+                }
             )
-            st.dataframe(styled_df, use_container_width=True)
         else:
             st.dataframe(df_matchups, use_container_width=True)
 
