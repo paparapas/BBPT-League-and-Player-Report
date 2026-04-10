@@ -345,23 +345,29 @@ elif page == "Ad-Hoc: Blader Profile":
             # Calcula as derrotas
             df_matchups['Losses'] = df_matchups['Games'] - df_matchups['Wins']
             
-            # Cria a barra proporcional (10 Blocos = 100%)
-            def criar_barra_proporcional(wins, games):
-                if games == 0: return '⬜' * 10
-                racio_vitorias = wins / games
-                blocos_verdes = int(round(racio_vitorias * 10))
-                blocos_vermelhos = 10 - blocos_verdes
-                return '🟩' * blocos_verdes + '🟥' * blocos_vermelhos
-            
-            df_matchups['Win/Loss Ratio'] = df_matchups.apply(lambda row: criar_barra_proporcional(row['Wins'], row['Games']), axis=1)
+            # Calcula a percentagem de vitórias de 0 a 100 para a barra de progresso
+            df_matchups['Win Rate %'] = (df_matchups['Wins'] / df_matchups['Games']) * 100
             
             # Reorganiza as colunas
-            df_matchups = df_matchups[['Opponent', 'Games', 'Wins', 'Losses', 'Win/Loss Ratio', 'Win Likelihood (Elo)']]
+            df_matchups = df_matchups[['Opponent', 'Games', 'Wins', 'Losses', 'Win Rate %', 'Win Likelihood (Elo)']]
             
             df_matchups.index += 1
             df_matchups.index.name = "#"
             
-        st.dataframe(df_matchups, use_container_width=True)
+        # Desenha a tabela com a Barra de Progresso Nativa
+        st.dataframe(
+            df_matchups, 
+            use_container_width=True,
+            column_config={
+                "Win Rate %": st.column_config.ProgressColumn(
+                    "Win Rate %",
+                    help="Barra visual da percentagem de vitórias",
+                    format="%.1f%%",
+                    min_value=0,
+                    max_value=100,
+                )
+            }
+        )
 
         st.divider()
 
