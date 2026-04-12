@@ -223,35 +223,39 @@ elif page == "Ad-Hoc: Blader Profile":
         events_played = p_data.get('events_played', 0)
         tournaments_won = p_data.get('tournaments_won', 0)
         
-        # Extrair os Pódios (Lendo de forma inteligente o AI Prompt do teu JSON)
+# Extrair os Pódios reais (Percorrendo as Ligas todas para ser 100% fiável)
         first_place = 0
         second_place = 0
         third_place = 0
-        fifth_place = 0
+        fourth_place = 0
+        top_8_place = 0 # Agrupa 5th, 6th, 7th e 8th
         made_top_cut = 0
         
-        prompt_text = p_data.get('ai_prompt', '')
-        import re
-        podios_match = re.search(r'- Histórico de Pódios:\s*([^\n]+)', prompt_text)
-        if podios_match:
-            podios_str = podios_match.group(1)
-            if "Nenhum" not in podios_str and "No Top" not in podios_str:
-                for item in podios_str.split(','):
-                    item = item.strip()
-                    if 'x' in item:
-                        try:
-                            qtd_str, pos_str = item.split('x')
-                            qtd = int(qtd_str.strip())
-                            pos = pos_str.strip().lower()
-                            
-                            if '1st' in pos: first_place += qtd
-                            elif '2nd' in pos: second_place += qtd
-                            elif '3rd' in pos: third_place += qtd
-                            elif '5th' in pos: fifth_place += qtd
-                            
-                            made_top_cut += qtd
-                        except:
-                            pass
+        # Vasculhar diretamente as classificações de todas as Ligas na base de dados
+        for key, value in db.items():
+            if isinstance(value, dict) and "standings" in value:
+                for player_st in value["standings"]:
+                    if player_st["Player"] == selected_player:
+                        record_str = player_st.get("Placements Record", "")
+                        if "No Top" not in record_str and record_str.strip():
+                            for item in record_str.split(','):
+                                item = item.strip()
+                                if 'x' in item:
+                                    try:
+                                        qtd_str, pos_str = item.split('x')
+                                        qtd = int(qtd_str.strip())
+                                        pos = pos_str.strip().lower()
+                                        
+                                        if '1st' in pos: first_place += qtd
+                                        elif '2nd' in pos: second_place += qtd
+                                        elif '3rd' in pos: third_place += qtd
+                                        elif '4th' in pos: fourth_place += qtd
+                                        elif '5th' in pos or '6th' in pos or '7th' in pos or '8th' in pos: 
+                                            top_8_place += qtd
+                                        
+                                        made_top_cut += qtd
+                                    except:
+                                        pass
         
         missed_top_cut = events_played - made_top_cut
         if missed_top_cut < 0: missed_top_cut = 0
@@ -301,26 +305,30 @@ elif page == "Ad-Hoc: Blader Profile":
             with st.container(border=True):
                 st.markdown(f"<h2 style='text-align: center; margin: 0;'>{tournaments_won}</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Tournaments Won</p>", unsafe_allow_html=True)
+        with t3:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{first_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #FFD700; margin: 0;'>🥇 1st Place</p>", unsafe_allow_html=True)
 
         t4, t5, t6 = st.columns(3)
         with t4:
             with st.container(border=True):
-                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{first_place}x</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #FFD700; margin: 0;'>🥇 1st Place</p>", unsafe_allow_html=True)
-        with t5:
-            with st.container(border=True):
                 st.markdown(f"<h2 style='text-align: center; margin: 0;'>{second_place}x</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: #C0C0C0; margin: 0;'>🥈 2nd Place</p>", unsafe_allow_html=True)
-        with t6:
+        with t5:
             with st.container(border=True):
                 st.markdown(f"<h2 style='text-align: center; margin: 0;'>{third_place}x</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: #CD7F32; margin: 0;'>🥉 3rd Place</p>", unsafe_allow_html=True)
+        with t6:
+            with st.container(border=True):
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{fourth_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>4th Place</p>", unsafe_allow_html=True)
 
         t7, t8, _ = st.columns(3)
         with t7:
             with st.container(border=True):
-                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{fifth_place}x</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>5th Place</p>", unsafe_allow_html=True)
+                st.markdown(f"<h2 style='text-align: center; margin: 0;'>{top_8_place}x</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: gray; margin: 0;'>Top 8 (5th-8th)</p>", unsafe_allow_html=True)
         with t8:
             with st.container(border=True):
                 st.markdown(f"<h2 style='text-align: center; color: #F44336; margin: 0;'>{missed_top_cut}x</h2>", unsafe_allow_html=True)
