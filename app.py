@@ -68,29 +68,7 @@ if not db:
 # 3. Menu de Navegação Lateral
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.divider()
-# ==========================================
-# CABEÇALHO COM LOGO DA BBPT (MÉTODO HTML)
-# ==========================================
-logo_path = "logo.png" if os.path.exists("logo.png") else "../logo.png"
 
-if os.path.exists(logo_path):
-    # Lemos a imagem e convertemos para base64
-    with open(logo_path, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode()
-    
-    # Injetamos HTML para colar a imagem ao texto (margin-right controla a distância)
-    st.markdown(
-        f"""
-        <div style="display: flex; align-items: center; margin-bottom: 20px;">
-            <img src="data:image/png;base64,{encoded_string}" width="45" style="margin-right: 15px;">
-            <h1 style="margin: 0; padding: 0; font-size: 2.2rem;">BBPT Admin - Battle Logger</h1>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
-else:
-    # Plano B caso ele não encontre a imagem
-    st.title("🛡️ BBPT Admin - Battle Logger")
 # 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
 page = st.sidebar.radio("Navegação:", [
     "Liga Critical", 
@@ -130,12 +108,51 @@ def render_advanced_metrics(metrics, league_mode=True):
     * **Baixa (< 5.0 Pts):** Meta de Defesa/Stamina (Jogos longos, muitas rondas decididas por Spin Finishes de 1 ponto. Ex: 4-3, 5-4)
     """)
 
+import base64
+import os
+import pandas as pd
+import streamlit as st
+
 # ==========================================
 # FUNÇÃO PARA RENDERIZAR PÁGINAS DE LIGA
 # ==========================================
 def render_league_page(league_name, league_key, comm_file):
-    st.title(f"🏆 {league_name}")
     
+    # 1. Detetar qual é a liga para escolher a imagem certa
+    if "versus" in league_name.lower() or "versus" in league_key.lower():
+        nome_ficheiro = "versus.png"
+    else:
+        nome_ficheiro = "critical.png"
+        
+    img_path = nome_ficheiro if os.path.exists(nome_ficheiro) else f"../{nome_ficheiro}"
+    
+    # 2. Renderizar o cabeçalho com a imagem escolhida e LETRA MAIOR
+    if os.path.exists(img_path):
+        with open(img_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <img src="data:image/png;base64,{encoded_string}" width="70" style="margin-right: 15px;">
+                <h1 style="margin: 0; padding: 0; font-size: 3.5rem;">{league_name}</h1>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+    else:
+        # Plano B: volta ao emoji se a imagem não existir, mas também com letra gigante
+        st.markdown(f"<h1 style='font-size: 3.5rem;'>🏆 {league_name}</h1>", unsafe_allow_html=True)
+    
+    # ==========================================
+    # O resto da função continua exatamente igual (comunicado, db.get, etc.)
+    # ==========================================
+    comunicado = load_communications(comm_file)
+# ... [restante código inalterado]
+    
+    # ==========================================
+    # O resto da função continua exatamente igual
+    # ==========================================
     comunicado = load_communications(comm_file)
     if comunicado:
         st.info(f"📢 **Quadro de Avisos da Organização:**\n\n{comunicado}")
@@ -173,7 +190,7 @@ if page == "Liga Critical":
     render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
 
 elif page == "Liga Versus":
-    render_league_page("Liga Versus", "league_versus", "comunicacoesVersus.txt")
+    render_league_page("Liga Versus X", "league_versus", "comunicacoesVersus.txt")
 
 elif page == "Torneio de Equipas - Liga Versus":
     st.title("🤝 Torneio de Equipas - Liga Versus")
