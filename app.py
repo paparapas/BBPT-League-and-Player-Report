@@ -75,9 +75,9 @@ col_logo, col_title = st.columns([1, 8])
 with col_logo:
     # Tenta ler o ficheiro na raiz. Adicionei o '../' como plano B caso o terminal esteja noutra pasta.
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=70) 
+        st.image("logo.png", width=30) 
     elif os.path.exists("../logo.png"):
-        st.image("../logo.png", width=70)
+        st.image("../logo.png", width=30)
     else:
         st.markdown("<h1 style='text-align: center;'>🛡️</h1>", unsafe_allow_html=True)
 
