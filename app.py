@@ -91,6 +91,16 @@ if os.path.exists(logo_path):
 else:
     # Plano B caso ele não encontre a imagem
     st.title("🛡️ BBPT Admin - Battle Logger")
+# 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
+page = st.sidebar.radio("Navegação:", [
+    "Liga Critical", 
+    "Liga Versus", 
+    "Torneio de Equipas - Liga Versus", 
+    "Rankings Globais", 
+    "Ad-Hoc: Blader Profile",
+    "Contactos & Equipa"
+])
+st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
 
 # ==========================================
 # FUNÇÃO REUTILIZÁVEL PARA RENDERIZAR MÉTRICAS AVANÇADAS
