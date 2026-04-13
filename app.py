@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import json
+import base64
 import os
 
 # 1. Configuração da Página
@@ -68,31 +69,28 @@ if not db:
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.divider()
 # ==========================================
-# CABEÇALHO COM LOGO DA BBPT
+# CABEÇALHO COM LOGO DA BBPT (MÉTODO HTML)
 # ==========================================
-col_logo, col_title = st.columns([1, 8])
+logo_path = "logo.png" if os.path.exists("logo.png") else "../logo.png"
 
-with col_logo:
-    # Tenta ler o ficheiro na raiz. Adicionei o '../' como plano B caso o terminal esteja noutra pasta.
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=30) 
-    elif os.path.exists("../logo.png"):
-        st.image("../logo.png", width=30)
-    else:
-        st.markdown("<h1 style='text-align: center;'>🛡️</h1>", unsafe_allow_html=True)
-
-with col_title:
-    st.title("BBPT Hub")
-# 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
-page = st.sidebar.radio("Navegação:", [
-    "Liga Critical", 
-    "Liga Versus", 
-    "Torneio de Equipas - Liga Versus", 
-    "Rankings Globais", 
-    "Ad-Hoc: Blader Profile",
-    "Contactos & Equipa"
-])
-st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
+if os.path.exists(logo_path):
+    # Lemos a imagem e convertemos para base64
+    with open(logo_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    
+    # Injetamos HTML para colar a imagem ao texto (margin-right controla a distância)
+    st.markdown(
+        f"""
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <img src="data:image/png;base64,{encoded_string}" width="45" style="margin-right: 15px;">
+            <h1 style="margin: 0; padding: 0; font-size: 2.2rem;">BBPT Admin - Battle Logger</h1>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+else:
+    # Plano B caso ele não encontre a imagem
+    st.title("🛡️ BBPT Admin - Battle Logger")
 
 # ==========================================
 # FUNÇÃO REUTILIZÁVEL PARA RENDERIZAR MÉTRICAS AVANÇADAS
