@@ -82,7 +82,7 @@ with col_logo:
         st.markdown("<h1 style='text-align: center;'>🛡️</h1>", unsafe_allow_html=True)
 
 with col_title:
-    st.title("BBPT Admin - Battle Logger")
+    st.title("BBPT Hub")
 # 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
 page = st.sidebar.radio("Navegação:", [
     "Liga Critical", 
