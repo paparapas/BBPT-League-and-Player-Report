@@ -29,7 +29,7 @@ st.markdown("""
     [data-testid="collapsedControl"] svg {
         fill: white !important;
         color: white !important;
-    }
+    }   
     
     [data-testid="collapsedControl"]::after {
         content: "MENU";
@@ -67,7 +67,22 @@ if not db:
 # 3. Menu de Navegação Lateral
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.divider()
-st.sidebar.title("🛡️ BBPT Hub")
+# ==========================================
+# CABEÇALHO COM LOGO DA BBPT
+# ==========================================
+col_logo, col_title = st.columns([1, 8])
+
+with col_logo:
+    # Tenta ler o ficheiro na raiz. Adicionei o '../' como plano B caso o terminal esteja noutra pasta.
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=70) 
+    elif os.path.exists("../logo.png"):
+        st.image("../logo.png", width=70)
+    else:
+        st.markdown("<h1 style='text-align: center;'>🛡️</h1>", unsafe_allow_html=True)
+
+with col_title:
+    st.title("BBPT Admin - Battle Logger")
 # 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
 page = st.sidebar.radio("Navegação:", [
     "Liga Critical", 
