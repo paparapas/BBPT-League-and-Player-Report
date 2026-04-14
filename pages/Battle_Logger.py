@@ -30,7 +30,7 @@ def get_gspread_client():
 def get_real_events():
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Config")
+        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Config")
         records = sheet.get_all_records()
         
         events = {}
@@ -53,7 +53,7 @@ def get_real_events():
 def get_real_players_and_combos(active_event_name):
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Folha1")
+        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Folha1")
         records = sheet.get_all_records()
         
         db = {}
@@ -165,7 +165,7 @@ def auto_fill_p2():
 def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Battle_Logs")
+        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Battle_Logs")
         
         data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_formatado = " | ".join(log)
