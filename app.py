@@ -243,95 +243,68 @@ elif page == "Ad-Hoc: Blader Profile":
         p_data = db['global_versus']['profiles'][selected_player]
         target_player_lower = str(selected_player).strip().lower()
         
-        # --- 1. EXTRACÇÃO DE DADOS E CÁLCULOS A PARTIR DO JSON GLOBAL ---
+        # --- 1. EXTRACÇÃO DE DADOS BÁSICOS DO PROFILE GLOBAL ---
         total_jogadores = len(db['global_versus']['profiles'])
         
         rank_atual = "N/A"
-        record_str = ""
-        events_played_calc = 0
-        
-        # 🔥 CORREÇÃO: Busca os dados oficiais DIRETAMENTE do Ranking Global!
         for r in db['global_versus'].get('rankings', []):
             if str(r.get('Player', '')).strip().lower() == target_player_lower:
                 rank_atual = r.get('Rank', 'N/A')
-                # Puxa a string de pódios oficiais do Global
-                record_str = str(r.get('Placements Record', r.get('Record', '')))
-                
-                # Puxa o total de eventos globais dessa linha (se existir)
-                for k in ['Events', 'Events Played', 'Tournaments', 'Played', 'Torneios']:
-                    if k in r:
-                        try:
-                            events_played_calc = int(r[k])
-                            break
-                        except: pass
                 break
-        
-        # Backup: Se a string não estiver no ranking, tenta puxar do profile individual
-        if not record_str.strip():
-            record_str = str(p_data.get('Placements Record', p_data.get('placements_record', '')))
-            
+                
+        # Calcula o total de torneios globais pelo jogador que mais participou
         total_eventos_globais = max((int(prof.get('events_played', 0)) for prof in db['global_versus']['profiles'].values()), default=0)
         
         total_matches = int(p_data.get('total_matches', 0))
+        events_played = int(p_data.get('events_played', 0))
+        
+        # Calcula vitórias somando diretamente dos matchups do profile global
         total_wins = sum(int(m.get('Wins', 0)) for m in p_data.get('matchups', []))
         total_losses = total_matches - total_wins
         win_rate = p_data.get('win_rate', 0)
         
+        # --- 2. EXTRAÇÃO DE PÓDIOS DIRETAMENTE DO AI PROMPT GLOBAL ---
         first_place = 0
         second_place = 0
         third_place = 0
         fourth_place = 0
         top_8_place = 0
-        explicit_missed_cuts = 0
         
         import re
-        debug_logs = []
         
-        # Processa a string Global com tolerância a erros (Regex)
-        if record_str.strip():
-            debug_logs.append(f"**Lido do Global Ranking**: {record_str}")
-            for item in record_str.split(','):
-                item = item.strip().lower()
-                if not item: continue
-                
-                qtd = 1
-                pos = item
-                
-                match = re.match(r'^(\d+)\s*[xX*]\s*(.+)$', item)
-                if match:
-                    qtd = int(match.group(1))
-                    pos = match.group(2).strip()
-                
-                if any(x in pos for x in ['1st', '1º', 'primeiro']) or pos == '1':
-                    first_place += qtd
-                elif any(x in pos for x in ['2nd', '2º', 'segundo']) or pos == '2':
-                    second_place += qtd
-                elif any(x in pos for x in ['3rd', '3º', 'terceiro']) or pos == '3':
-                    third_place += qtd
-                elif any(x in pos for x in ['4th', '4º', 'quarto']) or pos == '4':
-                    fourth_place += qtd
-                elif any(x in pos for x in ['5', '6', '7', '8', 'top']):
-                    if not any(x in pos for x in ['15', '16', '17', '18']): 
-                        top_8_place += qtd
-                elif any(x in pos for x in ['no top', 'miss', 'falhou', 'fora']):
-                    explicit_missed_cuts += qtd
-
-        made_top_cut = first_place + second_place + third_place + fourth_place + top_8_place
+        # Vamos ao texto do AI Prompt buscar a linha "Histórico de Pódios:"
+        ai_prompt = p_data.get('ai_prompt', '')
+        podios_match = re.search(r'Histórico de Pódios:\s*([^\n]+)', ai_prompt)
+        
+        if podios_match:
+            record_str = podios_match.group(1).strip()
+            
+            # O teu gerador escreve "Nenhum Top 8" se não houver vitórias
+            if record_str and record_str != "Nenhum Top 8":
+                # O gerador exporta sempre no formato exato: "3x 1st, 1x 2nd, 2x 5th"
+                for item in record_str.split(','):
+                    item = item.strip().lower()
+                    if not item: continue
+                    
+                    match = re.match(r'^(\d+)\s*[xX]\s*(.+)$', item)
+                    if match:
+                        qtd = int(match.group(1))
+                        pos = match.group(2).strip()
+                        
+                        if pos == '1st': first_place += qtd
+                        elif pos == '2nd': second_place += qtd
+                        elif pos == '3rd': third_place += qtd
+                        elif pos == '4th': fourth_place += qtd
+                        elif pos in ['5th', '6th', '7th', '8th']: top_8_place += qtd
+        
         tournaments_won = first_place
+        made_top_cut = first_place + second_place + third_place + fourth_place + top_8_place
         
-        events_played = events_played_calc if events_played_calc > 0 else int(p_data.get('events_played', 0))
-        
-        if explicit_missed_cuts > 0:
-            missed_top_cut = explicit_missed_cuts
-            if (made_top_cut + missed_top_cut) > events_played:
-                events_played = made_top_cut + missed_top_cut
-        else:
-            missed_top_cut = events_played - made_top_cut
-            if missed_top_cut < 0:
-                missed_top_cut = 0
-                events_played = made_top_cut 
+        # Matemática infalível: Eventos Jogados Globalmente - Eventos onde fez Top 8
+        missed_top_cut = events_played - made_top_cut
+        if missed_top_cut < 0: missed_top_cut = 0
 
-        # --- 2. INTERFACE VISUAL ---
+        # --- 3. INTERFACE VISUAL ---
         st.markdown(f"## *{selected_player} | Rank: {rank_atual} of {total_jogadores} players*")
         st.divider()
 
@@ -453,14 +426,6 @@ elif page == "Ad-Hoc: Blader Profile":
             df_history.index += 1
             df_history.index.name = "#"
         st.dataframe(df_history, use_container_width=True)
-        
-        # MODO DE DEBUG OCULTO PARA RESOLUÇÃO DE PROBLEMAS
-        with st.expander("🔍 Modo Debug de Classificações (JSON Raw)"):
-            if debug_logs:
-                for log in debug_logs:
-                    st.write(log)
-            else:
-                st.write("Nenhum registo de placements encontrado para este jogador.")
 
 # 👇 A NOVA PÁGINA DE CONTACTOS E EQUIPA 👇
 elif page == "Contactos & Equipa":
