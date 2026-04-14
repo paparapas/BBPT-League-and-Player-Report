@@ -18,8 +18,10 @@ def get_gspread_client():
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive'
     ]
+    # 🔴 MUDANÇA AQUI: Usa o nome exato e a conversão para dict que já usas no Deck Check!
+    creds_dict = dict(st.secrets["GCP_CREDENTIALS"])
     creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], 
+        creds_dict, 
         scopes=scopes
     )
     return gspread.authorize(creds)
