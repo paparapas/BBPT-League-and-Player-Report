@@ -12,10 +12,15 @@ st.set_page_config(page_title="Battle Logger", layout="wide", initial_sidebar_st
 
 st.markdown("""
 <style>
-    /* Reduzir a margem do topo que rouba espaço no telemóvel deitado */
+    /* 1. ELIMINAR A BARRA SUPERIOR DO STREAMLIT */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    
+    /* 2. Ajustar a margem para o conteúdo não bater na "notch"/bateria do telemóvel */
     .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
+        padding-top: 2rem !important;
+        padding-bottom: 0.5rem !important;
         max-width: 100% !important;
     }
 </style>
