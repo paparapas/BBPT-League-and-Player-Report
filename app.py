@@ -233,6 +233,21 @@ elif page == "Rankings Globais":
 
     render_advanced_metrics(db['global_versus'].get('advanced_metrics', {}), league_mode=False)
 
+    # 👇 NOVA SECÇÃO DE LOG DOS TORNEIOS CONTABILIZADOS 👇
+    st.divider()
+    st.subheader("📋 Audit Log: Torneios Globais")
+    st.markdown("Lista de todos os torneios que estão a alimentar o Power Rating Global e os Perfis Ad-Hoc.")
+    
+    global_audit = db['global_versus'].get('audit_log', [])
+    if global_audit:
+        df_global_audit = pd.DataFrame(global_audit)
+        if not df_global_audit.empty:
+            df_global_audit.index += 1
+            df_global_audit.index.name = "#"
+        st.dataframe(df_global_audit, use_container_width=True)
+    else:
+        st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global (vê a dica do gerador para o ativar).")
+
 elif page == "Ad-Hoc: Blader Profile":
     st.title("👤 Blader Intelligence Profile")
     
@@ -426,6 +441,21 @@ elif page == "Ad-Hoc: Blader Profile":
             df_history.index += 1
             df_history.index.name = "#"
         st.dataframe(df_history, use_container_width=True)
+
+        # 👇 NOVA SECÇÃO DE LOG DOS TORNEIOS NO PROFILE 👇
+        st.divider()
+        st.subheader("📋 Audit Log: Torneios Analisados")
+        st.markdown("Estes são os torneios provenientes do ficheiro `my_tournaments_global_versus.txt` usados para esta análise.")
+        
+        global_audit = db['global_versus'].get('audit_log', [])
+        if global_audit:
+            df_global_audit = pd.DataFrame(global_audit)
+            if not df_global_audit.empty:
+                df_global_audit.index += 1
+                df_global_audit.index.name = "#"
+            st.dataframe(df_global_audit, use_container_width=True)
+        else:
+            st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global (lembra-te de atualizar o gerador bbpt_admin_sync.py).")
 
 # 👇 A NOVA PÁGINA DE CONTACTOS E EQUIPA 👇
 elif page == "Contactos & Equipa":
