@@ -7,6 +7,20 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
+# 🛑 1. FORÇAR O MODO "WIDE" E REMOVER ESPAÇOS BRANCOS GIGANTES 🛑
+st.set_page_config(page_title="Battle Logger", layout="wide", initial_sidebar_state="collapsed")
+
+st.markdown("""
+<style>
+    /* Reduzir a margem do topo que rouba espaço no telemóvel deitado */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 100% !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ==========================================
 # 0. LIGAÇÃO REAL AO GOOGLE SHEETS E BASE DE DADOS
 # ==========================================
@@ -460,20 +474,21 @@ elif st.session_state.phase == 'ordering':
             st.error("⚠️ Encontrámos Beys repetidos!")
 
 # ==========================================
-# FASE 3: BATTLE LOOP
+# FASE 3: BATTLE LOOP (OTIMIZADO PARA LANDSCAPE)
 # ==========================================
 elif st.session_state.phase == 'battle':
     st.markdown("""
     <style>
         div.stButton > button {
-            height: 65px !important; 
+            min-height: 55px !important; 
+            height: auto !important;
             border-radius: 8px !important; 
             white-space: normal !important; 
             margin-bottom: 2px !important;
-            padding: 2px !important;
+            padding: 4px !important;
         }
         div.stButton > button p {
-            font-size: 16px !important;
+            font-size: clamp(14px, 3vw, 16px) !important;
             font-weight: 800 !important;
             line-height: 1.1 !important;
         }
@@ -498,17 +513,15 @@ elif st.session_state.phase == 'battle':
     bey_p1 = st.session_state.p1_active_deck[r_idx]
     bey_p2 = st.session_state.p2_active_deck[r_idx]
     
-    st.markdown(f"<p style='text-align: center; color: gray;'><b>RONDA ATUAL ({r_idx + 1}/3) - Jogam até {st.session_state.limit} pts</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: gray; margin-bottom: 0;'><b>RONDA ATUAL ({r_idx + 1}/3) - Jogam até {st.session_state.limit} pts</b></p>", unsafe_allow_html=True)
     
     c_p1, c_p2 = st.columns(2)
     
     with c_p1:
         with st.container(border=True):
-            st.markdown(f"<h2 style='text-align: center; margin-bottom: 0;'>{st.session_state.p1_name}</h2>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: 5rem; color: #4CAF50; line-height: 1.0; margin-top: 0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<h4 style='text-align: center; color: gray;'>🛡️ {bey_p1}</h4>", unsafe_allow_html=True)
-            
-            st.divider()
+            st.markdown(f"<h3 style='text-align: center; margin-bottom: 0; padding-bottom: 0;'>{st.session_state.p1_name}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3.5rem, 10vw, 5rem); color: #4CAF50; line-height: 1.0; margin-top: 0; margin-bottom: 0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.9rem; margin-bottom: 10px;'>🛡️ {bey_p1}</p>", unsafe_allow_html=True)
             
             st.markdown('<span id="btn-grid-p1"></span>', unsafe_allow_html=True)
             btn1_p1, btn2_p1 = st.columns(2)
@@ -521,11 +534,9 @@ elif st.session_state.phase == 'battle':
 
     with c_p2:
         with st.container(border=True):
-            st.markdown(f"<h2 style='text-align: center; margin-bottom: 0;'>{st.session_state.p2_name}</h2>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: 5rem; color: #FF4B4B; line-height: 1.0; margin-top: 0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<h4 style='text-align: center; color: gray;'>🛡️ {bey_p2}</h4>", unsafe_allow_html=True)
-            
-            st.divider()
+            st.markdown(f"<h3 style='text-align: center; margin-bottom: 0; padding-bottom: 0;'>{st.session_state.p2_name}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3.5rem, 10vw, 5rem); color: #FF4B4B; line-height: 1.0; margin-top: 0; margin-bottom: 0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.9rem; margin-bottom: 10px;'>🛡️ {bey_p2}</p>", unsafe_allow_html=True)
             
             st.markdown('<span id="btn-grid-p2"></span>', unsafe_allow_html=True)
             btn1_p2, btn2_p2 = st.columns(2)
