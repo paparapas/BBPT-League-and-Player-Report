@@ -193,7 +193,7 @@ def auto_fill_p2():
 def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Battle_Logs")
+        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Battle_Logs")
         
         data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_formatado = " | ".join(log)
