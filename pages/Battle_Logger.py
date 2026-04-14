@@ -4,24 +4,72 @@ import json
 import base64
 import os
 from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 # ==========================================
-# 0. SIMULADORES DE BASE DE DADOS E EVENTOS
+# 0. LIGAÇÃO REAL AO GOOGLE SHEETS E BASE DE DADOS
 # ==========================================
-MOCK_DB = {
-    "OneZarolho": ["Dran Sword 3-60 F", "Knight Shield 4-80 N", "Wizard Arrow 4-60 B", "Shark Edge 3-80 LF"],
-    "Paparapas": ["Phoenix Wing 9-60 GF", "Cobalt Drake 4-60 B", "Leon Claw 5-60 P", "Viper Tail 5-80 O"],
-    "Dexter": ["Hell Scythe 4-60 T", "Dagger 3-80 F", "Rhino Horn 5-60 O", "Phoenix Wing 9-60 R"],
-    "Velos77": ["Dranzer S 3-80 T", "Leon Crest 7-60 O", "Unicorn Sting 5-60 P", "Tyranno Beat 4-70 Q"]
-}
-
-MOCK_EVENTS = {
-    "Torneio de Lançamento BX": {"deck_check": False, "matching_open": True},
-    "Liga Nacional - Etapa 1": {"deck_check": True, "matching_open": True},
-    "Torneio de Inverno (Terminado)": {"deck_check": False, "matching_open": False}
-}
-
 DB_FILE = 'logger_db.json'
+
+def get_gspread_client():
+    """Lê os secrets do Streamlit e autentica no Google."""
+    scopes = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+    ]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], 
+        scopes=scopes
+    )
+    return gspread.authorize(creds)
+
+@st.cache_data(ttl=30) 
+def get_real_events():
+    try:
+        client = get_gspread_client()
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Config")
+        records = sheet.get_all_records()
+        
+        events = {}
+        for row in records:
+            raw_val = row.get("is_open", "")
+            if isinstance(raw_val, bool):
+                is_open = raw_val
+            else:
+                is_open = str(raw_val).strip().upper() in ["TRUE", "VERDADEIRO", "1", "SIM", "YES"]
+            
+            name = str(row.get("event_name", "")).strip()
+            if name:
+                events[name] = {"matching_open": is_open}
+        return events
+    except Exception as e:
+        st.error(f"⚠️ Erro ao carregar Configuração de Eventos: {e}")
+        return {}
+
+@st.cache_data(ttl=30)
+def get_real_players_and_combos(active_event_name):
+    try:
+        client = get_gspread_client()
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Folha1")
+        records = sheet.get_all_records()
+        
+        db = {}
+        for row in records:
+            if str(row.get("Event_Name", "")).strip() == active_event_name:
+                player = str(row.get("Player", "")).strip()
+                if player:
+                    combos = [
+                        str(row.get("Combo_1", "")).strip(),
+                        str(row.get("Combo_2", "")).strip(),
+                        str(row.get("Combo_3", "")).strip(),
+                        str(row.get("Combo_4", "")).strip()
+                    ]
+                    db[player] = [c for c in combos if c]
+        return db
+    except Exception as e:
+        st.error(f"⚠️ Erro ao carregar os Deck Checks (Folha1): {e}")
+        return {}
 
 def load_db():
     if os.path.exists(DB_FILE):
@@ -34,13 +82,13 @@ def save_db(data):
         json.dump(data, f, indent=4)
 
 # ==========================================
-# 1. TODAS AS FUNÇÕES 
+# 1. TODAS AS FUNÇÕES DE GESTÃO DA PARTIDA
 # ==========================================
 def auto_save_battle():
     db = load_db()
     b_id = st.session_state.battle_id
     snapshot = {
-        "Event_Name": st.session_state.active_event, # Associa automaticamente ao evento do Lobby
+        "Event_Name": st.session_state.active_event,
         "Status": "Em Curso" if st.session_state.phase != 'match_over' else "Terminada",
         "P1_Name": st.session_state.p1_name,
         "P2_Name": st.session_state.p2_name,
@@ -113,12 +161,23 @@ def auto_fill_p2():
         if s3 is None: st.session_state.p2_3 = rem
 
 def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
-    data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_formatado = " | ".join(log)
-    st.success(f"✅ Partida do evento '{event_name}' arquivada no Google Sheets com sucesso!")
+    try:
+        client = get_gspread_client()
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Battle_Logs")
+        
+        data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_formatado = " | ".join(log)
+        placar = f"{p1_score}-{p2_score}"
+        
+        sheet.append_row([
+            data_hora, event_name, b_id, p1, p2, placar, log_formatado
+        ])
+        st.success(f"✅ Partida do evento '{event_name}' arquivada no Google Sheets com sucesso!")
+    except Exception as e:
+        st.error(f"❌ Erro ao comunicar com a Base de Dados na Nuvem: {e}")
 
 # ==========================================
-# 2. INICIALIZAÇÃO
+# 2. INICIALIZAÇÃO E CABEÇALHO
 # ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -130,17 +189,11 @@ if 'active_event' not in st.session_state:
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-# ==========================================
-# CABEÇALHO COM LOGO DA BBPT (MÉTODO HTML)
-# ==========================================
 logo_path = "logo.png" if os.path.exists("logo.png") else "../logo.png"
 
 if os.path.exists(logo_path):
-    # Lemos a imagem e convertemos para base64
     with open(logo_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode()
-    
-    # Injetamos HTML para colar a imagem ao texto (margin-right controla a distância)
     st.markdown(
         f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px;">
@@ -151,7 +204,6 @@ if os.path.exists(logo_path):
         unsafe_allow_html=True
     )
 else:
-    # Plano B caso ele não encontre a imagem
     st.title("🛡️ BBPT Admin - Battle Logger")
 
 # ==========================================
@@ -164,24 +216,26 @@ if st.session_state.phase == 'login':
     if st.button("Entrar", type="primary"):
         if pwd == "admin123":
             st.session_state.logged_in = True
-            st.session_state.phase = 'event_selection' # Agora vai para o seletor de eventos primeiro!
+            st.session_state.phase = 'event_selection'
             st.rerun()
         else:
             st.error("Password Incorreta.")
 
 # ==========================================
-# FASE 0.25: SELEÇÃO DE EVENTO (NOVO)
+# FASE 0.25: SELEÇÃO DE EVENTO (LIGAÇÃO REAL)
 # ==========================================
 elif st.session_state.phase == 'event_selection' and st.session_state.logged_in:
     st.markdown("### 📅 Selecionar Evento Ativo")
     st.info("Escolhe o evento que estás a organizar. Todas as batalhas serão indexadas a ele.")
     
-    eventos_abertos = [evt for evt, dados in MOCK_EVENTS.items() if dados.get("matching_open", False)]
+    real_events = get_real_events()
     
-    if not eventos_abertos:
-        st.warning("Não há eventos abertos para Matching de momento.")
+    if not real_events:
+        st.warning("Não há eventos configurados na folha 'Config' de momento.")
     else:
-        event_name = st.selectbox("📍 Evento:", options=eventos_abertos, index=None, placeholder="Escolhe um evento...")
+        lista_eventos = list(real_events.keys())
+        event_name = st.selectbox("📍 Evento:", options=lista_eventos, index=None, placeholder="Escolhe um evento...")
+        
         if st.button("Entrar no Lobby do Evento", type="primary", use_container_width=True):
             if event_name:
                 st.session_state.active_event = event_name
@@ -191,11 +245,10 @@ elif st.session_state.phase == 'event_selection' and st.session_state.logged_in:
                 st.error("⚠️ Seleciona um evento para continuar!")
 
 # ==========================================
-# FASE 0.5: O LOBBY (AGORA FOCADO NO EVENTO)
+# FASE 0.5: O LOBBY
 # ==========================================
 elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
     
-    # Cabeçalho do Evento com botão de troca
     col_t1, col_t2 = st.columns([3, 1])
     with col_t1:
         st.markdown(f"### 🏟️ Lobby: **{st.session_state.active_event}**")
@@ -210,15 +263,21 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.info("Queres iniciar um novo jogo?")
-        if st.button("➕ Criar Nova Batalha", use_container_width=True, type="primary"):
-            st.session_state.phase = 'setup'
-            st.rerun()
+        real_events = get_real_events()
+        is_open = real_events.get(st.session_state.active_event, {}).get("matching_open", False)
+        
+        if is_open:
+            st.info("Queres iniciar um novo jogo?")
+            if st.button("➕ Criar Nova Batalha", use_container_width=True, type="primary"):
+                st.session_state.phase = 'setup'
+                st.rerun()
+        else:
+            st.warning("🔒 Matching Fechado")
+            st.caption("Vai à aba 'Config' no Google Sheets e muda o 'is_open' para TRUE se quiseres iniciar novas batalhas neste evento.")
             
     with col2:
         st.warning("Retomar batalha pendente:")
         db = load_db()
-        # Filtra SÓ as batalhas em curso DESTE evento
         batalhas_ativas = {k: v for k, v in db.items() if v["Status"] == "Em Curso" and v.get("Event_Name") == st.session_state.active_event}
         
         if batalhas_ativas:
@@ -231,11 +290,9 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
         else:
             st.success("Nenhuma batalha ativa neste evento.")
 
-    # LISTA DE BATALHAS CONCLUÍDAS DESTE EVENTO
     st.divider()
     st.markdown("### 🏆 Batalhas Concluídas (Arquivo Local)")
     
-    # Filtra SÓ as batalhas terminadas DESTE evento
     batalhas_concluidas = {k: v for k, v in db.items() if v["Status"] == "Terminada" and v.get("Event_Name") == st.session_state.active_event}
     
     if batalhas_concluidas:
@@ -243,7 +300,7 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
             c_info, c_del, c_space = st.columns([4, 2, 4])
             with c_info:
                 st.markdown(f"#### 👤 {b_data['P1_Name']} vs {b_data['P2_Name']}")
-                st.caption(f"Placar Final: **{b_data['P1_Score']} - {b_data['P2_Score']}**") # A tag do evento saiu porque o evento já é óbvio
+                st.caption(f"Placar Final: **{b_data['P1_Score']} - {b_data['P2_Score']}**")
             with c_del:
                 st.write("") 
                 if st.session_state.get(f"confirm_del_{b_id}"):
@@ -265,56 +322,70 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
         st.info(f"Ainda não há resultados finais para '{st.session_state.active_event}'.")
 
 # ==========================================
-# FASE 1: SETUP E DRAFTING (DIRETO PARA JOGADORES)
+# FASE 1: SETUP E DRAFTING (LIGAÇÃO REAL)
 # ==========================================
 elif st.session_state.phase == 'setup':
     st.markdown(f"### 1. Configuração da Partida")
     st.caption(f"A indexar a: **{st.session_state.active_event}**")
     st.write("")
     
-    lista_jogadores = list(MOCK_DB.keys())
+    # Busca os jogadores e decks reais
+    current_db = get_real_players_and_combos(st.session_state.active_event)
+    lista_jogadores = list(current_db.keys())
     
-    c1, c2 = st.columns(2)
-    with c1:
-        p1_name = st.selectbox("Jogador 1:", options=lista_jogadores, index=None)
-        p1_pool = MOCK_DB.get(p1_name, []) if p1_name else []
-        p1_draft = st.multiselect(f"Combos P1:", p1_pool, max_selections=3, disabled=not p1_name)
-
-    with c2:
-        p2_name = st.selectbox("Jogador 2:", options=lista_jogadores, index=None)
-        p2_pool = MOCK_DB.get(p2_name, []) if p2_name else []
-        p2_draft = st.multiselect(f"Combos P2:", p2_pool, max_selections=3, disabled=not p2_name)
-
-    limit = st.radio("Limite de Pontos:", [4, 5, 7], horizontal=True)
-
-    if st.button("▶️ Iniciar Batalha", use_container_width=True, type="primary"):
-        if p1_name and p2_name and p1_name == p2_name:
-            st.error("⚠️ Um jogador não pode batalhar contra si próprio!")
-        elif p1_name and p2_name and len(p1_draft) == 3 and len(p2_draft) == 3:
-            st.session_state.p1_name = p1_name
-            st.session_state.p2_name = p2_name
-            st.session_state.p1_deck_pool = p1_draft
-            st.session_state.p2_deck_pool = p2_draft
-            st.session_state.limit = limit
-            st.session_state.p1_score = 0
-            st.session_state.p2_score = 0
-            st.session_state.current_round = 0
-            st.session_state.match_log = []
-            
-            timestamp = datetime.now().strftime("%H%M%S")
-            st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
-            
-            st.session_state.phase = 'ordering'
-            auto_save_battle() 
+    if not lista_jogadores:
+        st.warning(f"Ainda não há jogadores inscritos no evento '{st.session_state.active_event}' na Folha1.")
+        if st.button("Voltar ao Lobby"):
+            st.session_state.phase = 'lobby'
             st.rerun()
-        else:
-            st.warning("⚠️ Seleciona os dois jogadores e exatamente 3 combos para cada um!")
+    else:
+        c1, c2 = st.columns(2)
+        with c1:
+            p1_name = st.selectbox("Jogador 1:", options=lista_jogadores, index=None)
+            p1_pool = current_db.get(p1_name, []) if p1_name else []
+            p1_draft = st.multiselect(f"Combos P1:", p1_pool, max_selections=3, disabled=not p1_name)
+
+        with c2:
+            p2_name = st.selectbox("Jogador 2:", options=lista_jogadores, index=None)
+            p2_pool = current_db.get(p2_name, []) if p2_name else []
+            p2_draft = st.multiselect(f"Combos P2:", p2_pool, max_selections=3, disabled=not p2_name)
+
+        limit = st.radio("Limite de Pontos:", [4, 5, 7], horizontal=True)
+
+        if st.button("▶️ Iniciar Batalha", use_container_width=True, type="primary"):
+            if p1_name and p2_name and p1_name == p2_name:
+                st.error("⚠️ Um jogador não pode batalhar contra si próprio!")
+            elif p1_name and p2_name and len(p1_draft) == 3 and len(p2_draft) == 3:
+                st.session_state.p1_name = p1_name
+                st.session_state.p2_name = p2_name
+                st.session_state.p1_deck_pool = p1_draft
+                st.session_state.p2_deck_pool = p2_draft
+                st.session_state.limit = limit
+                st.session_state.p1_score = 0
+                st.session_state.p2_score = 0
+                st.session_state.current_round = 0
+                st.session_state.match_log = []
+                
+                timestamp = datetime.now().strftime("%H%M%S")
+                st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
+                
+                st.session_state.phase = 'ordering'
+                auto_save_battle() 
+                st.rerun()
+            else:
+                st.warning("⚠️ Seleciona os dois jogadores e exatamente 3 combos para cada um!")
 
 # ==========================================
 # FASE 2: ORDERING / RESHUFFLE
 # ==========================================
 elif st.session_state.phase == 'ordering':
-    st.markdown(f"### 🔄 Seleção de Ordem")
+    st.markdown("""
+    <div style='background-color: #ff4b4b; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;'>
+        <h1 style='color: white; margin: 0; font-size: 3rem;'>🚨 RESHUFFLE 🚨</h1>
+        <p style='color: white; font-size: 1.2rem; margin: 0;'>A ronda terminou. Escolham a nova ordem secreta dos Beys!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.info("💡 Dica: Ao escolheres 2 combos, o 3º preenche automaticamente.")
     
     if st.session_state.history:
@@ -356,40 +427,79 @@ elif st.session_state.phase == 'ordering':
 # FASE 3: BATTLE LOOP
 # ==========================================
 elif st.session_state.phase == 'battle':
-    st.markdown("""<style>div.stButton > button {height: 90px !important; font-size: 24px !important; font-weight: 800 !important; border-radius: 12px !important; white-space: normal !important; margin-bottom: 5px !important;} div.stButton > button p {font-size: 22px !important;}</style>""", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+        div.stButton > button {
+            height: 65px !important; 
+            border-radius: 8px !important; 
+            white-space: normal !important; 
+            margin-bottom: 2px !important;
+            padding: 2px !important;
+        }
+        div.stButton > button p {
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            line-height: 1.1 !important;
+        }
+        
+        .element-container:has(#btn-grid-p1) + .element-container > div[data-testid="stHorizontalBlock"],
+        .element-container:has(#btn-grid-p2) + .element-container > div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        
+        .element-container:has(#btn-grid-p1) + .element-container > div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+        .element-container:has(#btn-grid-p2) + .element-container > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: 50% !important;
+            min-width: 48% !important;
+            flex: 1 1 50% !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
     r_idx = st.session_state.current_round
     bey_p1 = st.session_state.p1_active_deck[r_idx]
     bey_p2 = st.session_state.p2_active_deck[r_idx]
     
-    c1, c2, c3 = st.columns([4, 1, 4])
-    with c1:
-        st.markdown(f"<h1 style='text-align: center; font-size: 3rem;'>{st.session_state.p1_name}</h1>", unsafe_allow_html=True)
-        st.markdown(f"<h1 style='text-align: center; font-size: 6rem; color: #4CAF50; line-height: 1.0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
-        st.markdown(f"<h3 style='text-align: center; color: gray;'>🛡️ {bey_p1}</h3>", unsafe_allow_html=True)
-    with c2:
-        st.write(""); st.write(""); st.write("")
-        st.markdown("<h1 style='text-align: center; font-size: 2rem; color: gray;'>VS</h1>", unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"<h1 style='text-align: center; font-size: 3rem;'>{st.session_state.p2_name}</h1>", unsafe_allow_html=True)
-        st.markdown(f"<h1 style='text-align: center; font-size: 6rem; color: #FF4B4B; line-height: 1.0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
-        st.markdown(f"<h3 style='text-align: center; color: gray;'>🛡️ {bey_p2}</h3>", unsafe_allow_html=True)
-
-    st.divider()
+    st.markdown(f"<p style='text-align: center; color: gray;'><b>RONDA ATUAL ({r_idx + 1}/3) - Jogam até {st.session_state.limit} pts</b></p>", unsafe_allow_html=True)
     
-    btn_col1, empty_col, btn_col2 = st.columns([4, 1, 4])
-    with btn_col1:
-        st.button("🌀 Spin (+1)", key="p1_spin", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Spin Finish", 1, bey_p1, bey_p2))
-        st.button("💨 Over (+2)", key="p1_over", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Over Finish", 2, bey_p1, bey_p2))
-        st.button("💥 Burst (+2)", key="p1_burst", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Burst Finish", 2, bey_p1, bey_p2))
-        st.button("⚡ X-Treme (+3)", key="p1_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p1_name, "X-Treme Finish", 3, bey_p1, bey_p2))
+    c_p1, c_p2 = st.columns(2)
+    
+    with c_p1:
+        with st.container(border=True):
+            st.markdown(f"<h2 style='text-align: center; margin-bottom: 0;'>{st.session_state.p1_name}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: 5rem; color: #4CAF50; line-height: 1.0; margin-top: 0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; color: gray;'>🛡️ {bey_p1}</h4>", unsafe_allow_html=True)
+            
+            st.divider()
+            
+            st.markdown('<span id="btn-grid-p1"></span>', unsafe_allow_html=True)
+            btn1_p1, btn2_p1 = st.columns(2)
+            with btn1_p1:
+                st.button("🌀 Spin (+1)", key="p1_spin", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Spin Finish", 1, bey_p1, bey_p2))
+                st.button("💥 Burst (+2)", key="p1_burst", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Burst Finish", 2, bey_p1, bey_p2))
+            with btn2_p1:
+                st.button("💨 Over (+2)", key="p1_over", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Over Finish", 2, bey_p1, bey_p2))
+                st.button("⚡ X-Treme (+3)", key="p1_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p1_name, "X-Treme Finish", 3, bey_p1, bey_p2))
 
-    with btn_col2:
-        st.button("🌀 Spin (+1)", key="p2_spin", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Spin Finish", 1, bey_p2, bey_p1))
-        st.button("💨 Over (+2)", key="p2_over", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Over Finish", 2, bey_p2, bey_p1))
-        st.button("💥 Burst (+2)", key="p2_burst", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Burst Finish", 2, bey_p2, bey_p1))
-        st.button("⚡ X-Treme (+3)", key="p2_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p2_name, "X-Treme Finish", 3, bey_p2, bey_p1))
-        
+    with c_p2:
+        with st.container(border=True):
+            st.markdown(f"<h2 style='text-align: center; margin-bottom: 0;'>{st.session_state.p2_name}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: 5rem; color: #FF4B4B; line-height: 1.0; margin-top: 0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; color: gray;'>🛡️ {bey_p2}</h4>", unsafe_allow_html=True)
+            
+            st.divider()
+            
+            st.markdown('<span id="btn-grid-p2"></span>', unsafe_allow_html=True)
+            btn1_p2, btn2_p2 = st.columns(2)
+            with btn1_p2:
+                st.button("🌀 Spin (+1)", key="p2_spin", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Spin Finish", 1, bey_p2, bey_p1))
+                st.button("💥 Burst (+2)", key="p2_burst", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Burst Finish", 2, bey_p2, bey_p1))
+            with btn2_p2:
+                st.button("💨 Over (+2)", key="p2_over", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Over Finish", 2, bey_p2, bey_p1))
+                st.button("⚡ X-Treme (+3)", key="p2_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p2_name, "X-Treme Finish", 3, bey_p2, bey_p1))
+            
     st.write("")
     aux_col1, aux_col2, aux_col3 = st.columns([1, 2, 1])
     with aux_col2:
@@ -438,13 +548,8 @@ elif st.session_state.phase == 'match_over':
             
     with col_new:
         if st.button("🔄 Voltar ao Lobby do Evento", use_container_width=True, type="primary"):
-            # 1. Guarda o nome do evento ANTES de limpar a memória!
             evento_atual = st.session_state.active_event
-            
-            # 2. Agora sim, limpa tudo para não haver lixo
             st.session_state.clear()
-            
-            # 3. Restaura apenas o essencial para voltar ao Lobby
             st.session_state.logged_in = True
             st.session_state.active_event = evento_atual
             st.session_state.phase = 'lobby'
