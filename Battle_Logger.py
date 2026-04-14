@@ -24,7 +24,7 @@ def get_gspread_client():
     )
     return gspread.authorize(creds)
 
-@st.cache_data(ttl=30) # Vai ao Google de 30 em 30 segundos ver se há novidades
+@st.cache_data(ttl=30) 
 def get_real_events():
     try:
         client = get_gspread_client()
@@ -34,7 +34,6 @@ def get_real_events():
         events = {}
         for row in records:
             raw_val = row.get("is_open", "")
-            # O gspread pode ler a célula como Booleano nativo ou como String. Isto previne ambos.
             if isinstance(raw_val, bool):
                 is_open = raw_val
             else:
@@ -57,7 +56,6 @@ def get_real_players_and_combos(active_event_name):
         
         db = {}
         for row in records:
-            # Só puxa os jogadores cujo "Event_Name" seja igual ao evento em que entrámos no Lobby
             if str(row.get("Event_Name", "")).strip() == active_event_name:
                 player = str(row.get("Player", "")).strip()
                 if player:
@@ -67,7 +65,6 @@ def get_real_players_and_combos(active_event_name):
                         str(row.get("Combo_3", "")).strip(),
                         str(row.get("Combo_4", "")).strip()
                     ]
-                    # Limpa células vazias caso o jogador tenha levado menos de 4 beys
                     db[player] = [c for c in combos if c]
         return db
     except Exception as e:
@@ -163,7 +160,6 @@ def auto_fill_p2():
         if s2 is None: st.session_state.p2_2 = rem
         if s3 is None: st.session_state.p2_3 = rem
 
-# --- ARQUIVO REAL NO GOOGLE SHEETS ---
 def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
     try:
         client = get_gspread_client()
@@ -173,7 +169,6 @@ def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
         log_formatado = " | ".join(log)
         placar = f"{p1_score}-{p2_score}"
         
-        # Anexa os dados na nova aba Battle_Logs
         sheet.append_row([
             data_hora, event_name, b_id, p1, p2, placar, log_formatado
         ])
@@ -182,7 +177,7 @@ def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
         st.error(f"❌ Erro ao comunicar com a Base de Dados na Nuvem: {e}")
 
 # ==========================================
-# 2. INICIALIZAÇÃO
+# 2. INICIALIZAÇÃO E CABEÇALHO
 # ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -194,9 +189,6 @@ if 'active_event' not in st.session_state:
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-# ==========================================
-# CABEÇALHO COM LOGO DA BBPT
-# ==========================================
 logo_path = "logo.png" if os.path.exists("logo.png") else "../logo.png"
 
 if os.path.exists(logo_path):
@@ -241,7 +233,6 @@ elif st.session_state.phase == 'event_selection' and st.session_state.logged_in:
     if not real_events:
         st.warning("Não há eventos configurados na folha 'Config' de momento.")
     else:
-        # Agora mostra SEMPRE todos os eventos (mesmo os fechados)
         lista_eventos = list(real_events.keys())
         event_name = st.selectbox("📍 Evento:", options=lista_eventos, index=None, placeholder="Escolhe um evento...")
         
@@ -254,7 +245,7 @@ elif st.session_state.phase == 'event_selection' and st.session_state.logged_in:
                 st.error("⚠️ Seleciona um evento para continuar!")
 
 # ==========================================
-# FASE 0.5: O LOBBY (AGORA INTELIGENTE)
+# FASE 0.5: O LOBBY
 # ==========================================
 elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
     
@@ -272,7 +263,6 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        # Verifica no Google se este evento tem o Matching Aberto (TRUE)
         real_events = get_real_events()
         is_open = real_events.get(st.session_state.active_event, {}).get("matching_open", False)
         
@@ -339,7 +329,7 @@ elif st.session_state.phase == 'setup':
     st.caption(f"A indexar a: **{st.session_state.active_event}**")
     st.write("")
     
-    # 🔴 PUXA OS JOGADORES REAIS DESTE EVENTO A PARTIR DA FOLHA1 🔴
+    # Busca os jogadores e decks reais
     current_db = get_real_players_and_combos(st.session_state.active_event)
     lista_jogadores = list(current_db.keys())
     
@@ -532,7 +522,6 @@ elif st.session_state.phase == 'match_over':
     st.write("")
     
     if 'arquivado' not in st.session_state:
-        # AGORA CHAMA O GOOGLE SHEETS E GUARDA NA ABA "Battle_Logs"
         archive_match_to_gsheets(
             st.session_state.active_event,
             st.session_state.battle_id,
