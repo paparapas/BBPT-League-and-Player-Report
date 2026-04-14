@@ -499,30 +499,47 @@ elif st.session_state.phase == 'ordering':
                 st.error("⚠️ Encontrámos Beys repetidos!")
 
 # ==========================================
-# FASE 3: BATTLE LOOP (OTIMIZADO PARA LANDSCAPE)
+# FASE 3: BATTLE LOOP (ULTRA-COMPACTO PARA LANDSCAPE)
 # ==========================================
 elif st.session_state.phase == 'battle':
     st.markdown("""
     <style>
-        div.stButton > button {
-            min-height: 55px !important; 
-            height: auto !important;
-            border-radius: 8px !important; 
-            white-space: normal !important; 
-            margin-bottom: 2px !important;
-            padding: 4px !important;
-        }
-        div.stButton > button p {
-            font-size: clamp(14px, 3vw, 16px) !important;
-            font-weight: 800 !important;
-            line-height: 1.1 !important;
+        /* 1. Esmagar margens do contentor principal do Streamlit */
+        .block-container {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+            gap: 0.2rem !important;
         }
         
+        /* 2. Esmagar o padding dentro dos "Cartões" com borda */
+        div[data-testid="stVerticalBlockBorderWrapper"] > div {
+            padding: 0.5rem !important;
+            gap: 0.2rem !important;
+        }
+
+        /* 3. Botões de Ação mais finos e letras ajustadas */
+        div.stButton > button {
+            min-height: 45px !important; 
+            height: auto !important;
+            border-radius: 6px !important; 
+            white-space: normal !important; 
+            margin-bottom: 0px !important;
+            padding: 2px !important;
+        }
+        div.stButton > button p {
+            font-size: clamp(12px, 2.5vw, 15px) !important;
+            font-weight: 800 !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+        }
+        
+        /* 4. Grelha 2x2 Lado a Lado blindada */
         .element-container:has(#btn-grid-p1) + .element-container > div[data-testid="stHorizontalBlock"],
         .element-container:has(#btn-grid-p2) + .element-container > div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
+            gap: 0.2rem !important;
         }
         
         .element-container:has(#btn-grid-p1) + .element-container > div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
@@ -531,6 +548,14 @@ elif st.session_state.phase == 'battle':
             min-width: 48% !important;
             flex: 1 1 50% !important;
         }
+        
+        /* 5. Grelha dos botões inferiores (Lobby e Undo) */
+        .element-container:has(#bottom-btns) + .element-container > div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 0.5rem !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -538,15 +563,15 @@ elif st.session_state.phase == 'battle':
     bey_p1 = st.session_state.p1_active_deck[r_idx]
     bey_p2 = st.session_state.p2_active_deck[r_idx]
     
-    st.markdown(f"<p style='text-align: center; color: gray; margin-bottom: 0;'><b>RONDA ATUAL ({r_idx + 1}/3) - Jogam até {st.session_state.limit} pts</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: gray; margin: 0; padding: 0; font-size: 0.8rem;'><b>RONDA {r_idx + 1}/3 | Jogam até {st.session_state.limit} pts</b></p>", unsafe_allow_html=True)
     
     c_p1, c_p2 = st.columns(2)
     
     with c_p1:
         with st.container(border=True):
-            st.markdown(f"<h3 style='text-align: center; margin-bottom: 0; padding-bottom: 0;'>{st.session_state.p1_name}</h3>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3.5rem, 10vw, 5rem); color: #4CAF50; line-height: 1.0; margin-top: 0; margin-bottom: 0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.9rem; margin-bottom: 10px;'>🛡️ {bey_p1}</p>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; margin: 0; padding: 0; line-height: 1.2;'>{st.session_state.p1_name}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3rem, 8vw, 4rem); color: #4CAF50; line-height: 0.9; margin: 0; padding: 0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.75rem; margin: 0 0 5px 0; padding: 0; line-height: 1;'>🛡️ {bey_p1}</p>", unsafe_allow_html=True)
             
             st.markdown('<span id="btn-grid-p1"></span>', unsafe_allow_html=True)
             btn1_p1, btn2_p1 = st.columns(2)
@@ -559,9 +584,9 @@ elif st.session_state.phase == 'battle':
 
     with c_p2:
         with st.container(border=True):
-            st.markdown(f"<h3 style='text-align: center; margin-bottom: 0; padding-bottom: 0;'>{st.session_state.p2_name}</h3>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3.5rem, 10vw, 5rem); color: #FF4B4B; line-height: 1.0; margin-top: 0; margin-bottom: 0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.9rem; margin-bottom: 10px;'>🛡️ {bey_p2}</p>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; margin: 0; padding: 0; line-height: 1.2;'>{st.session_state.p2_name}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3rem, 8vw, 4rem); color: #FF4B4B; line-height: 0.9; margin: 0; padding: 0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.75rem; margin: 0 0 5px 0; padding: 0; line-height: 1;'>🛡️ {bey_p2}</p>", unsafe_allow_html=True)
             
             st.markdown('<span id="btn-grid-p2"></span>', unsafe_allow_html=True)
             btn1_p2, btn2_p2 = st.columns(2)
@@ -572,7 +597,7 @@ elif st.session_state.phase == 'battle':
                 st.button("💨 Over (+2)", key="p2_over", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Over Finish", 2, bey_p2, bey_p1))
                 st.button("⚡ X-Treme (+3)", key="p2_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p2_name, "X-Treme Finish", 3, bey_p2, bey_p1))
             
-    st.write("")
+    st.markdown('<span id="bottom-btns"></span>', unsafe_allow_html=True)
     aux_col1, aux_col2 = st.columns(2)
     with aux_col1:
         if st.button("🚪 Voltar ao Lobby", use_container_width=True):
