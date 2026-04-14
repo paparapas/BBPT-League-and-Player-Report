@@ -18,7 +18,6 @@ def get_gspread_client():
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive'
     ]
-    # 🔴 MUDANÇA AQUI: Usa o nome exato e a conversão para dict que já usas no Deck Check!
     creds_dict = dict(st.secrets["GCP_CREDENTIALS"])
     creds = Credentials.from_service_account_info(
         creds_dict, 
@@ -27,33 +26,61 @@ def get_gspread_client():
     return gspread.authorize(creds)
 
 @st.cache_data(ttl=30) 
-def get_real_events():
+def get_all_events_info():
+    """Lê a aba Config para o evento atual e a Folha1 para o histórico."""
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Config")
-        records = sheet.get_all_records()
         
-        events = {}
-        for row in records:
+        # 1. Ler o Evento Atual da aba Config
+        config_sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Config")
+        config_records = config_sheet.get_all_records()
+        
+        current_event_name = None
+        deck_check_is_open = True
+        
+        if config_records:
+            row = config_records[0] # A Config só tem 1 linha
+            current_event_name = str(row.get("event_name", "")).strip()
             raw_val = row.get("is_open", "")
             if isinstance(raw_val, bool):
-                is_open = raw_val
+                deck_check_is_open = raw_val
             else:
-                is_open = str(raw_val).strip().upper() in ["TRUE", "VERDADEIRO", "1", "SIM", "YES"]
+                deck_check_is_open = str(raw_val).strip().upper() in ["TRUE", "VERDADEIRO", "1", "SIM", "YES"]
+                
+        events = {}
+        
+        # ISSUE 1: Se o Deck Check está ABERTO, as batalhas estão FECHADAS (e vice-versa)
+        if current_event_name:
+            events[current_event_name] = {
+                "matching_open": not deck_check_is_open, 
+                "is_current": True,
+                "deck_check_status": deck_check_is_open
+            }
             
-            name = str(row.get("event_name", "")).strip()
-            if name:
-                events[name] = {"matching_open": is_open}
+        # 2. Ler a Folha1 para encontrar todos os eventos antigos (Histórico)
+        folha1_sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Folha1")
+        folha1_records = folha1_sheet.get_all_records()
+        
+        for row in folha1_records:
+            ev_name = str(row.get("Event_Name", "")).strip()
+            if ev_name and ev_name not in events:
+                # Eventos antigos entram na lista, mas com batalhas fechadas por defeito
+                events[ev_name] = {
+                    "matching_open": False, 
+                    "is_current": False,
+                    "deck_check_status": False
+                }
+                
         return events
     except Exception as e:
-        st.error(f"⚠️ Erro ao carregar Configuração de Eventos: {e}")
+        st.error(f"⚠️ Erro ao carregar Eventos do Google Sheets: {e}")
         return {}
 
 @st.cache_data(ttl=30)
 def get_real_players_and_combos(active_event_name):
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Folha1")
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Folha1")
         records = sheet.get_all_records()
         
         db = {}
@@ -162,10 +189,11 @@ def auto_fill_p2():
         if s2 is None: st.session_state.p2_2 = rem
         if s3 is None: st.session_state.p2_3 = rem
 
+# --- ARQUIVO REAL NO GOOGLE SHEETS ---
 def archive_match_to_gsheets(event_name, b_id, p1, p2, p1_score, p2_score, log):
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Battle_Logs")
+        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Battle_Logs")
         
         data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_formatado = " | ".join(log)
@@ -224,18 +252,18 @@ if st.session_state.phase == 'login':
             st.error("Password Incorreta.")
 
 # ==========================================
-# FASE 0.25: SELEÇÃO DE EVENTO (LIGAÇÃO REAL)
+# FASE 0.25: SELEÇÃO DE EVENTO 
 # ==========================================
 elif st.session_state.phase == 'event_selection' and st.session_state.logged_in:
     st.markdown("### 📅 Selecionar Evento Ativo")
-    st.info("Escolhe o evento que estás a organizar. Todas as batalhas serão indexadas a ele.")
+    st.info("Escolhe o evento atual ou consulta o histórico de eventos anteriores.")
     
-    real_events = get_real_events()
+    all_events = get_all_events_info()
     
-    if not real_events:
-        st.warning("Não há eventos configurados na folha 'Config' de momento.")
+    if not all_events:
+        st.warning("Não há eventos na folha 'Config' nem histórico na 'Folha1'.")
     else:
-        lista_eventos = list(real_events.keys())
+        lista_eventos = list(all_events.keys())
         event_name = st.selectbox("📍 Evento:", options=lista_eventos, index=None, placeholder="Escolhe um evento...")
         
         if st.button("Entrar no Lobby do Evento", type="primary", use_container_width=True):
@@ -265,17 +293,24 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        real_events = get_real_events()
-        is_open = real_events.get(st.session_state.active_event, {}).get("matching_open", False)
+        all_events = get_all_events_info()
+        event_data = all_events.get(st.session_state.active_event, {})
         
-        if is_open:
-            st.info("Queres iniciar um novo jogo?")
+        is_matching_open = event_data.get("matching_open", False)
+        is_current = event_data.get("is_current", False)
+        
+        if is_matching_open:
+            st.info("O Deck Check fechou. Podes iniciar batalhas!")
             if st.button("➕ Criar Nova Batalha", use_container_width=True, type="primary"):
                 st.session_state.phase = 'setup'
                 st.rerun()
         else:
-            st.warning("🔒 Matching Fechado")
-            st.caption("Vai à aba 'Config' no Google Sheets e muda o 'is_open' para TRUE se quiseres iniciar novas batalhas neste evento.")
+            if is_current:
+                st.warning("🔒 Batalhas Bloqueadas")
+                st.caption("O Deck Check ainda está ABERTO. Para iniciar batalhas, o organizador tem de ir à folha 'Config' e mudar a coluna is_open para FALSE.")
+            else:
+                st.warning("🗄️ Evento Arquivado")
+                st.caption("Este torneio já terminou. Estás em modo de consulta do histórico.")
             
     with col2:
         st.warning("Retomar batalha pendente:")
@@ -324,14 +359,13 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
         st.info(f"Ainda não há resultados finais para '{st.session_state.active_event}'.")
 
 # ==========================================
-# FASE 1: SETUP E DRAFTING (LIGAÇÃO REAL)
+# FASE 1: SETUP E DRAFTING
 # ==========================================
 elif st.session_state.phase == 'setup':
     st.markdown(f"### 1. Configuração da Partida")
     st.caption(f"A indexar a: **{st.session_state.active_event}**")
     st.write("")
     
-    # Busca os jogadores e decks reais
     current_db = get_real_players_and_combos(st.session_state.active_event)
     lista_jogadores = list(current_db.keys())
     
@@ -384,7 +418,7 @@ elif st.session_state.phase == 'ordering':
     st.markdown("""
     <div style='background-color: #ff4b4b; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;'>
         <h1 style='color: white; margin: 0; font-size: 3rem;'>🚨 RESHUFFLE 🚨</h1>
-        <p style='color: white; font-size: 1.2rem; margin: 0;'>Escolham a nova ordem secreta dos Beys!</p>
+        <p style='color: white; font-size: 1.2rem; margin: 0;'>A ronda terminou. Escolham a nova ordem secreta dos Beys!</p>
     </div>
     """, unsafe_allow_html=True)
     
