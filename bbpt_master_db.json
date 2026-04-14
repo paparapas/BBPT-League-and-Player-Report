@@ -1,5 +1,5 @@
 {
-    "last_updated": "2026-04-15 00:29:49",
+    "last_updated": "2026-04-15 00:43:23",
     "league_critical": {
         "standings": [
             {
@@ -20254,6 +20254,68 @@
                 "🥈 2nd: MiguelBigG (2 Wins | 55 Pts)",
                 "🥉 3rd: Amostra (2 Wins | 30 Pts)"
             ]
-        }
+        },
+        "audit_log": [
+            {
+                "ID": "17307098",
+                "Event Name": "Versus GameCenter - Torneio Inaugural de Beyblade X",
+                "Player Count": 22
+            },
+            {
+                "ID": "17338033",
+                "Event Name": "(Versus GameCenter) Versus X - 11/1/2025",
+                "Player Count": 22
+            },
+            {
+                "ID": "17338042",
+                "Event Name": "(Versus GameCenter) Versus X - 18/1/2025",
+                "Player Count": 22
+            },
+            {
+                "ID": "17338053",
+                "Event Name": "(Versus GameCenter) Versus X - 25/1/2025",
+                "Player Count": 19
+            },
+            {
+                "ID": "17338056",
+                "Event Name": "(Versus GameCenter) Versus X - 1/Fev/2026",
+                "Player Count": 22
+            },
+            {
+                "ID": "17462834",
+                "Event Name": "(Versus GameCenter) Versus X - 8/2/2026",
+                "Player Count": 20
+            },
+            {
+                "ID": "17498667",
+                "Event Name": "(Versus GameCenter) Versus X - 15/2/2026",
+                "Player Count": 16
+            },
+            {
+                "ID": "17535099",
+                "Event Name": "(Versus GameCenter) Liga Versus X - 22/2/26 (Week 1)",
+                "Player Count": 26
+            },
+            {
+                "ID": "17575671",
+                "Event Name": "(Versus GameCenter) Liga Versus X - 1/3/26 (Week 2)",
+                "Player Count": 22
+            },
+            {
+                "ID": "17592106",
+                "Event Name": "(Versus GameCenter) Liga Versus X - 8/3/26 (Week 3)",
+                "Player Count": 19
+            },
+            {
+                "ID": "17692051",
+                "Event Name": "(Versus GameCenter) Liga Versus X - 29/3/26 (Week 5)",
+                "Player Count": 21
+            },
+            {
+                "ID": "17762418",
+                "Event Name": "(Versus GameCenter) Liga Versus X - 12/4/26 (Week 6)",
+                "Player Count": 23
+            }
+        ]
     }
 }
