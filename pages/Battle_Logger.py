@@ -432,7 +432,7 @@ elif st.session_state.phase == 'ordering':
     st.markdown("""
     <div style='background-color: #ff4b4b; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;'>
         <h1 style='color: white; margin: 0; font-size: 3rem;'>🚨 RESHUFFLE 🚨</h1>
-        <p style='color: white; font-size: 1.2rem; margin: 0;'>A ronda terminou. Escolham a nova ordem secreta dos Beys!</p>
+        <p style='color: white; font-size: 1.2rem; margin: 0;'>Escolham a nova ordem secreta dos Beys!</p>
     </div>
     """, unsafe_allow_html=True)
     
