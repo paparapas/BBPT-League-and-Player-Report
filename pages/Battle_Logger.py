@@ -63,7 +63,7 @@ def get_all_events_info():
                 
         events = {}
         
-        # ISSUE 1: Se o Deck Check está ABERTO, as batalhas estão FECHADAS (e vice-versa)
+        # Se o Deck Check está ABERTO, as batalhas estão FECHADAS (e vice-versa)
         if current_event_name:
             events[current_event_name] = {
                 "matching_open": not deck_check_is_open, 
@@ -402,28 +402,41 @@ elif st.session_state.phase == 'setup':
 
         limit = st.radio("Limite de Pontos:", [4, 5, 7], horizontal=True)
 
-        if st.button("▶️ Iniciar Batalha", use_container_width=True, type="primary"):
-            if p1_name and p2_name and p1_name == p2_name:
-                st.error("⚠️ Um jogador não pode batalhar contra si próprio!")
-            elif p1_name and p2_name and len(p1_draft) == 3 and len(p2_draft) == 3:
-                st.session_state.p1_name = p1_name
-                st.session_state.p2_name = p2_name
-                st.session_state.p1_deck_pool = p1_draft
-                st.session_state.p2_deck_pool = p2_draft
-                st.session_state.limit = limit
-                st.session_state.p1_score = 0
-                st.session_state.p2_score = 0
-                st.session_state.current_round = 0
-                st.session_state.match_log = []
-                
-                timestamp = datetime.now().strftime("%H%M%S")
-                st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
-                
-                st.session_state.phase = 'ordering'
-                auto_save_battle() 
+        st.write("")
+        col_back, col_start = st.columns(2)
+        
+        with col_back:
+            if st.button("🚪 Voltar ao Lobby", use_container_width=True):
+                evt = st.session_state.active_event
+                st.session_state.clear()
+                st.session_state.logged_in = True
+                st.session_state.active_event = evt
+                st.session_state.phase = 'lobby'
                 st.rerun()
-            else:
-                st.warning("⚠️ Seleciona os dois jogadores e exatamente 3 combos para cada um!")
+                
+        with col_start:
+            if st.button("▶️ Iniciar Batalha", use_container_width=True, type="primary"):
+                if p1_name and p2_name and p1_name == p2_name:
+                    st.error("⚠️ Um jogador não pode batalhar contra si próprio!")
+                elif p1_name and p2_name and len(p1_draft) == 3 and len(p2_draft) == 3:
+                    st.session_state.p1_name = p1_name
+                    st.session_state.p2_name = p2_name
+                    st.session_state.p1_deck_pool = p1_draft
+                    st.session_state.p2_deck_pool = p2_draft
+                    st.session_state.limit = limit
+                    st.session_state.p1_score = 0
+                    st.session_state.p2_score = 0
+                    st.session_state.current_round = 0
+                    st.session_state.match_log = []
+                    
+                    timestamp = datetime.now().strftime("%H%M%S")
+                    st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
+                    
+                    st.session_state.phase = 'ordering'
+                    auto_save_battle() 
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Seleciona os dois jogadores e exatamente 3 combos para cada um!")
 
 # ==========================================
 # FASE 2: ORDERING / RESHUFFLE
@@ -455,23 +468,35 @@ elif st.session_state.phase == 'ordering':
         p2_3 = st.selectbox("3º Beyblade (P2)", st.session_state.p2_deck_pool, index=None, key="p2_3", on_change=auto_fill_p2)
 
     st.write("")
-    if st.button("⚔️ Entrar na Arena!", use_container_width=True, type="primary"):
-        p1_choices = [p1_1, p1_2, p1_3]
-        p2_choices = [p2_1, p2_2, p2_3]
-        
-        if None in p1_choices or None in p2_choices:
-            st.error("⚠️ Preenche os 3 lugares!")
-        elif len(set(p1_choices)) == 3 and len(set(p2_choices)) == 3:
-            st.session_state.p1_active_deck = p1_choices
-            st.session_state.p2_active_deck = p2_choices
-            st.session_state.current_round = 0 
-            st.session_state.phase = 'battle'
-            
-            for k in ['p1_1', 'p1_2', 'p1_3', 'p2_1', 'p2_2', 'p2_3']: del st.session_state[k]
-            auto_save_battle() 
+    col_back, col_enter = st.columns(2)
+    
+    with col_back:
+        if st.button("🚪 Voltar ao Lobby", use_container_width=True):
+            evt = st.session_state.active_event
+            st.session_state.clear()
+            st.session_state.logged_in = True
+            st.session_state.active_event = evt
+            st.session_state.phase = 'lobby'
             st.rerun()
-        else:
-            st.error("⚠️ Encontrámos Beys repetidos!")
+            
+    with col_enter:
+        if st.button("⚔️ Entrar na Arena!", use_container_width=True, type="primary"):
+            p1_choices = [p1_1, p1_2, p1_3]
+            p2_choices = [p2_1, p2_2, p2_3]
+            
+            if None in p1_choices or None in p2_choices:
+                st.error("⚠️ Preenche os 3 lugares!")
+            elif len(set(p1_choices)) == 3 and len(set(p2_choices)) == 3:
+                st.session_state.p1_active_deck = p1_choices
+                st.session_state.p2_active_deck = p2_choices
+                st.session_state.current_round = 0 
+                st.session_state.phase = 'battle'
+                
+                for k in ['p1_1', 'p1_2', 'p1_3', 'p2_1', 'p2_2', 'p2_3']: del st.session_state[k]
+                auto_save_battle() 
+                st.rerun()
+            else:
+                st.error("⚠️ Encontrámos Beys repetidos!")
 
 # ==========================================
 # FASE 3: BATTLE LOOP (OTIMIZADO PARA LANDSCAPE)
@@ -548,7 +573,16 @@ elif st.session_state.phase == 'battle':
                 st.button("⚡ X-Treme (+3)", key="p2_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p2_name, "X-Treme Finish", 3, bey_p2, bey_p1))
             
     st.write("")
-    aux_col1, aux_col2, aux_col3 = st.columns([1, 2, 1])
+    aux_col1, aux_col2 = st.columns(2)
+    with aux_col1:
+        if st.button("🚪 Voltar ao Lobby", use_container_width=True):
+            evt = st.session_state.active_event
+            st.session_state.clear()
+            st.session_state.logged_in = True
+            st.session_state.active_event = evt
+            st.session_state.phase = 'lobby'
+            st.rerun()
+            
     with aux_col2:
         if st.session_state.history:
             st.button("↩️ OOPS! Desfazer Última Ação", use_container_width=True, on_click=undo_last_action)
