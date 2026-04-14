@@ -32,7 +32,7 @@ def get_all_events_info():
         client = get_gspread_client()
         
         # 1. Ler o Evento Atual da aba Config
-        config_sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Config")
+        config_sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Config")
         config_records = config_sheet.get_all_records()
         
         current_event_name = None
@@ -58,7 +58,7 @@ def get_all_events_info():
             }
             
         # 2. Ler a Folha1 para encontrar todos os eventos antigos (Histórico)
-        folha1_sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Folha1")
+        folha1_sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Folha1")
         folha1_records = folha1_sheet.get_all_records()
         
         for row in folha1_records:
@@ -80,7 +80,7 @@ def get_all_events_info():
 def get_real_players_and_combos(active_event_name):
     try:
         client = get_gspread_client()
-        sheet = client.open_by_url(st.secrets["spreadsheet_url"]).worksheet("Folha1")
+        sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Folha1")
         records = sheet.get_all_records()
         
         db = {}
