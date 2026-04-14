@@ -251,7 +251,6 @@ elif page == "Ad-Hoc: Blader Profile":
                 rank_atual = r['Rank']
                 break
                 
-        # Converte para inteiro para corrigir o bug de "7 / 0"
         total_eventos_liga = max((int(prof.get('events_played', 0)) for prof in db['global_versus']['profiles'].values()), default=0)
         
         total_matches = int(p_data.get('total_matches', 0))
@@ -259,29 +258,37 @@ elif page == "Ad-Hoc: Blader Profile":
         total_losses = total_matches - total_wins
         win_rate = p_data.get('win_rate', 0)
         
-        events_played = int(p_data.get('events_played', 0))
-        
+        # Variáveis Reais de Pódios
+        events_played_calc = 0
         first_place = 0
         second_place = 0
         third_place = 0
         fourth_place = 0
         top_8_place = 0
-        made_top_cut = 0
         explicit_missed_cuts = 0
         
         import re
-        debug_logs = [] # Guarda o que o sistema leu para podermos investigar
-        
-        # Vasculhar diretamente as classificações
+        target_player_lower = str(selected_player).strip().lower()
+
+        # Vasculhar TODAS as Ligas (ignorando Maiúsculas/Minúsculas)
         for key, value in db.items():
             if isinstance(value, dict) and "standings" in value:
                 for player_st in value["standings"]:
-                    if player_st["Player"] == selected_player:
+                    db_player = str(player_st.get("Player", "")).strip().lower()
+                    
+                    if db_player == target_player_lower:
+                        # Extrai Eventos Jogados reais diretamente da tabela de standings (se existir)
+                        for k in ['Events', 'Events Played', 'Tournaments', 'Played', 'Torneios']:
+                            if k in player_st:
+                                try:
+                                    events_played_calc += int(player_st[k])
+                                    break
+                                except: pass
+                        
                         record_str = str(player_st.get("Placements Record", ""))
                         if not record_str.strip(): continue
                         
-                        debug_logs.append(f"**{key}**: {record_str}")
-                        
+                        # Separa e analisa "3x 1st, 1x 2nd" etc.
                         for item in record_str.split(','):
                             item = item.strip().lower()
                             if not item: continue
@@ -289,40 +296,45 @@ elif page == "Ad-Hoc: Blader Profile":
                             qtd = 1
                             pos = item
                             
-                            # Regex para separar "3x 1st" ou "3 x 1st Place"
+                            # Regex à prova de bala para extrair a Quantidade
                             match = re.match(r'^(\d+)\s*[xX*]\s*(.+)$', item)
                             if match:
                                 qtd = int(match.group(1))
                                 pos = match.group(2).strip()
                             
-                            # Leitura Ultra-Tolerante
-                            if '1st' in pos or '1º' in pos or pos == '1':
+                            # Mapeamento agressivo de Posições
+                            if any(x in pos for x in ['1st', '1º', 'primeiro']) or pos == '1':
                                 first_place += qtd
-                                made_top_cut += qtd
-                            elif '2nd' in pos or '2º' in pos or pos == '2':
+                            elif any(x in pos for x in ['2nd', '2º', 'segundo']) or pos == '2':
                                 second_place += qtd
-                                made_top_cut += qtd
-                            elif '3rd' in pos or '3º' in pos or pos == '3':
+                            elif any(x in pos for x in ['3rd', '3º', 'terceiro']) or pos == '3':
                                 third_place += qtd
-                                made_top_cut += qtd
-                            elif '4th' in pos or '4º' in pos or pos == '4':
+                            elif any(x in pos for x in ['4th', '4º', 'quarto']) or pos == '4':
                                 fourth_place += qtd
-                                made_top_cut += qtd
-                            elif 'no top' in pos or 'miss' in pos:
-                                explicit_missed_cuts += qtd
                             elif any(x in pos for x in ['5', '6', '7', '8', 'top']):
-                                top_8_place += qtd
-                                made_top_cut += qtd
+                                if not any(x in pos for x in ['15', '16', '17', '18']): # Previne confusão com 15th
+                                    top_8_place += qtd
+                            elif any(x in pos for x in ['no top', 'miss', 'falhou', 'fora']):
+                                explicit_missed_cuts += qtd
 
+        # Matemática Definitiva Auto-Corretiva
+        made_top_cut = first_place + second_place + third_place + fourth_place + top_8_place
         tournaments_won = first_place
         
-        # Se o JSON tiver os Missed Cuts explicitos, usa-os. Senão, faz a matemática.
+        # Se encontrou Eventos na tabela usa isso, senão cai para o Profile do JSON
+        events_played = events_played_calc if events_played_calc > 0 else int(p_data.get('events_played', 0))
+        
+        # Calcula Missed Cuts de forma lógica
         if explicit_missed_cuts > 0:
             missed_top_cut = explicit_missed_cuts
+            # Garante que os eventos jogados coincidem com a realidade
+            if (made_top_cut + missed_top_cut) > events_played:
+                events_played = made_top_cut + missed_top_cut
         else:
             missed_top_cut = events_played - made_top_cut
-            
-        if missed_top_cut < 0: missed_top_cut = 0
+            if missed_top_cut < 0:
+                missed_top_cut = 0
+                events_played = made_top_cut # Se os pódios excederem o profile, atualiza para cima
 
         # --- 2. INTERFACE VISUAL ---
         st.markdown(f"## *{selected_player} | Rank: {rank_atual} of {total_jogadores} players*")
@@ -446,14 +458,6 @@ elif page == "Ad-Hoc: Blader Profile":
             df_history.index += 1
             df_history.index.name = "#"
         st.dataframe(df_history, use_container_width=True)
-        
-        # Modo de Depuração (Apenas visível se clicares para expandir)
-        with st.expander("🔍 Modo Debug de Classificações (JSON Raw)"):
-            if debug_logs:
-                for log in debug_logs:
-                    st.write(log)
-            else:
-                st.write("Nenhum registo encontrado para este jogador.")
 
 # 👇 A NOVA PÁGINA DE CONTACTOS E EQUIPA 👇
 elif page == "Contactos & Equipa":
