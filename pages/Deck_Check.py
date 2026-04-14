@@ -262,7 +262,26 @@ def append_suggestion(sug_text):
 # ==========================================
 # INTERFACE
 # ==========================================
-st.sidebar.title("🛡️ BBPT App")
+logo_path = "logo.png" if os.path.exists("logo.png") else "../logo.png"
+has_logo = os.path.exists(logo_path)
+
+if has_logo:
+    with open(logo_path, "rb") as image_file:
+        encoded_logo = base64.b64encode(image_file.read()).decode()
+
+if has_logo:
+    st.sidebar.markdown(
+        f"""
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <img src="data:image/png;base64,{encoded_logo}" width="35" style="margin-right: 10px;">
+            <h1 style="margin: 0; padding: 0; font-size: 1.8rem;">BBPT App</h1>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+else:
+    st.sidebar.title("🛡️ BBPT App")
+
 menu = st.sidebar.radio("Navegação:", ["📝 Formulário Público", "⚙️ Painel de Organização"])
 event_status = get_event_status_cached()
 
@@ -466,7 +485,18 @@ if menu == "📝 Formulário Público":
                 st.image(up, caption="Fotografia do Deck", use_container_width=True)
 
 elif menu == "⚙️ Painel de Organização":
-    st.title("🛡️ Admin")
+    if has_logo:
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <img src="data:image/png;base64,{encoded_logo}" width="45" style="margin-right: 15px;">
+                <h1 style="margin: 0; padding: 0; font-size: 2.2rem;">Admin</h1>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+    else:
+        st.title("🛡️ Admin")
     
     # 1. Criar a memória de autenticação (se não existir)
     if "admin_auth" not in st.session_state:
