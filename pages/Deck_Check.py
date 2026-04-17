@@ -539,12 +539,33 @@ elif menu == "⚙️ Painel de Organização":
             if col1.button("ABRIR EVENTO"): set_event_status(True, ev_n); st.rerun()
         if col2.button("Limpar Cache 🔄"): st.cache_data.clear(); st.rerun()
         st.divider()
-        recs_admin = get_all_records_cached(event_status["event_name"])
-        st.metric(f"Total em '{event_status['event_name']}'", len(recs_admin))
-        for d in recs_admin:
-            with st.expander(f"👤 {d['Player']}"):
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    for i in range(1, 5):
-                        if d.get(f'Combo_{i}'): st.write(f"**Combo {i}:** {d[f'Combo_{i}']}")
-                c2.image(d['Image_URL'])
+        
+        # --- NOVA SECÇÃO DE ESCOLHA DE VISUALIZAÇÃO ---
+        st.subheader("👀 Verificar Decks Submetidos")
+        
+        # Junta o evento atual com o histórico para criar a lista de opções
+        todos_eventos = list(set([event_status["event_name"]] + past_events)) if event_status["event_name"] else past_events
+        todos_eventos = sorted([e for e in todos_eventos if e.strip()])
+        
+        if todos_eventos:
+            # Marcador visual para distinguir o estado de cada evento na lista
+            def marcador_status(ev):
+                if ev == event_status["event_name"] and event_status["is_open"]: return f"🟢 [ABERTO] {ev}"
+                elif ev == event_status["event_name"] and not event_status["is_open"]: return f"🔴 [FECHADO] {ev}"
+                else: return f"📁 [ARQUIVADO] {ev}"
+            
+            # O dropdown para o Admin escolher o que quer ver (não afeta o que o público vê!)
+            evento_verificar = st.selectbox("Escolher Evento para Visualizar:", todos_eventos, format_func=marcador_status)
+            
+            recs_admin = get_all_records_cached(evento_verificar)
+            st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
+            
+            for d in recs_admin:
+                with st.expander(f"👤 {d['Player']}"):
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        for i in range(1, 5):
+                            if d.get(f'Combo_{i}'): st.write(f"**Combo {i}:** {d[f'Combo_{i}']}")
+                    c2.image(d['Image_URL'])
+        else:
+            st.info("Ainda não há eventos registados.")
