@@ -65,7 +65,7 @@ with col_esq:
         st.subheader("📊 Faz aqui download da tabela mais atual")
 
         # Atualizado para ler o .jpg correto
-        file_path_format = "BBPT_BP_Format.png"
+        file_path_format = "BBPT_BP_Format.PNG"
         if os.path.exists(file_path_format):
             st.image(file_path_format, use_container_width=True)
         else:
