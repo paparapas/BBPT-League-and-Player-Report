@@ -11,6 +11,9 @@ from google.oauth2.service_account import Credentials
 # 🛑 1. FORÇAR O MODO "WIDE" E REMOVER ESPAÇOS BRANCOS GIGANTES 🛑
 st.set_page_config(page_title="Battle Logger", layout="wide", initial_sidebar_state="collapsed")
 
+# 👇 COLOCA AQUI PARA TESTAR 👇
+st.write("Teste de Atualização")
+
 st.markdown("""
 <style>
     /* 1. ELIMINAR A BARRA SUPERIOR DO STREAMLIT */
