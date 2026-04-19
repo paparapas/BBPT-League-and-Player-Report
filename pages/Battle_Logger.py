@@ -698,6 +698,12 @@ elif st.session_state.phase == 'battle':
         if st.session_state.history:
             st.button("↩️ OOPS! Desfazer Última Ação", use_container_width=True, on_click=undo_last_action)
 
+    # 👇 O NOVO BOTÃO DE CORREÇÃO SUPER SEGURO (PARA QUALQUER RESHUFFLE) 👇
+    if st.session_state.current_round == 0:
+        if st.button("🔄 Corrigir Ordem dos Beys", use_container_width=True):
+            st.session_state.phase = 'ordering'
+            st.rerun()
+
 # ==========================================
 # FASE 4: MATCH OVER
 # ==========================================
