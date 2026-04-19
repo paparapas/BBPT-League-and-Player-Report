@@ -145,26 +145,31 @@ def render_league_page(league_name, league_key, comm_file):
         st.markdown(f"<h1 style='font-size: 3.5rem;'>🏆 {league_name}</h1>", unsafe_allow_html=True)
     
     # ==========================================
-    # O resto da função continua exatamente igual (comunicado, db.get, etc.)
-    # ==========================================
-    comunicado = load_communications(comm_file)
-# ... [restante código inalterado]
-    
-    # ==========================================
-    # O resto da função continua exatamente igual
+    # A MAGIA DA LIGA
     # ==========================================
     comunicado = load_communications(comm_file)
     if comunicado:
         st.info(f"📢 **Quadro de Avisos da Organização:**\n\n{comunicado}")
     
     data = db.get(league_key)
-    if not data or not data.get("standings"):
+    
+    # Nova chave "standings_top8"
+    if not data or not data.get("standings_top8"):
         st.warning(f"Ainda não há dados de partidas disponíveis para a {league_name}.")
         return
 
     st.subheader("📊 League Standings")
-    st.markdown("*Official points ranking based on Top 8 finishes.*")
-    df_standings = pd.DataFrame(data['standings'])
+    
+    # A Switch (Toggle) 
+    mostrar_totais = st.toggle("Mostrar Todas as Participações (Pontuação Total)")
+    
+    if mostrar_totais:
+        st.markdown("*Classificação absoluta somando o resultado de **todos** os torneios disputados.*")
+        df_standings = pd.DataFrame(data['standings_total'])
+    else:
+        st.markdown("*Pontuação oficial da liga baseada apenas nos **8 melhores** resultados de cada Blader.*")
+        df_standings = pd.DataFrame(data['standings_top8'])
+
     if not df_standings.empty:
         df_standings.set_index('Rank', inplace=True)
     st.dataframe(df_standings, use_container_width=True)
