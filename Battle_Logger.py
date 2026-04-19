@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import base64
 import os
+import time
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
@@ -230,7 +231,7 @@ def sync_from_gsheets(event_name):
     try:
         client = get_gspread_client()
         sheet = client.open_by_url(st.secrets["SHEET_URL"]).worksheet("Battle_Logs")
-        values = sheet.get_all_values() # Puxa tudo de forma bruta e segura
+        values = sheet.get_all_values()
         
         db = load_db()
         
@@ -240,9 +241,8 @@ def sync_from_gsheets(event_name):
             del db[k]
             
         count = 0
-        if len(values) > 1: # Se tiver mais do que apenas a linha de cabeçalho
+        if len(values) > 1:
             for row in values[1:]:
-                # Estrutura esperada: 0:Data, 1:Evento, 2:ID, 3:P1, 4:P2, 5:Placar, 6:Log
                 if len(row) >= 7 and str(row[1]).strip() == event_name:
                     b_id = str(row[2]).strip()
                     if not b_id: b_id = f"sync_{datetime.now().timestamp()}_{count}"
@@ -254,7 +254,6 @@ def sync_from_gsheets(event_name):
                     log_raw = str(row[6])
                     match_log = log_raw.split(" | ") if log_raw else []
                     
-                    # 2. Escrever a estrutura exata exigida pelo teu Lobby
                     db[b_id] = {
                         "Event_Name": event_name,
                         "Status": "Terminada",
@@ -396,18 +395,17 @@ elif st.session_state.phase == 'lobby' and st.session_state.logged_in:
     st.divider()
     st.markdown("### 🏆 Batalhas Concluídas (Arquivo Local)")
     
-    import time # Importação necessária para o delay do botão
+    # 👇 O BOTÃO DE RECUPERAÇÃO ESTÁ AQUI 👇
     if st.button("☁️ Recuperar Histórico do Google Sheets", help="Clica aqui para repor as batalhas concluídas puxando a informação da nuvem.", use_container_width=True):
         with st.spinner("A procurar na nuvem e a reescrever o ficheiro local..."):
             success, msg = sync_from_gsheets(st.session_state.active_event)
             if success:
                 st.success(f"✅ Sincronização perfeita! Foram recuperadas {msg} batalhas para o lobby.")
-                time.sleep(1.5) # Dá tempo para leres a mensagem antes de recarregar a página
+                time.sleep(1.5)
                 st.rerun()
             else:
                 st.error(f"❌ Erro ao sincronizar: {msg}")
     
-    # Recarrega a base de dados imediatamente antes de desenhar a lista caso tenhas acabado de sincronizar
     db = load_db() 
     batalhas_concluidas = {k: v for k, v in db.items() if v["Status"] == "Terminada" and v.get("Event_Name") == st.session_state.active_event}
     
@@ -476,281 +474,4 @@ elif st.session_state.phase == 'setup':
         limit = st.radio("Limite de Pontos:", [4, 5, 7], horizontal=True)
 
         st.write("")
-        col_back, col_start = st.columns(2)
-        
-        with col_back:
-            if st.button("🚪 Voltar ao Lobby", use_container_width=True):
-                evt = st.session_state.active_event
-                st.session_state.clear()
-                st.session_state.logged_in = True
-                st.session_state.active_event = evt
-                st.session_state.phase = 'lobby'
-                st.rerun()
-                
-        with col_start:
-            if st.button("▶️ Iniciar Batalha", use_container_width=True, type="primary"):
-                if p1_name and p2_name and p1_name == p2_name:
-                    st.error("⚠️ Um jogador não pode batalhar contra si próprio!")
-                elif p1_name and p2_name and None not in p1_draft and None not in p2_draft:
-                    if len(set(p1_draft)) == 3 and len(set(p2_draft)) == 3:
-                        st.session_state.p1_name = p1_name
-                        st.session_state.p2_name = p2_name
-                        
-                        # 1. Tranca a pool apenas aos 3 beys escolhidos para os futuros reshuffles
-                        st.session_state.p1_deck_pool = p1_draft.copy()
-                        st.session_state.p2_deck_pool = p2_draft.copy()
-                        
-                        # 2. Define já a ordem ativa para a batalha
-                        st.session_state.p1_active_deck = p1_draft.copy()
-                        st.session_state.p2_active_deck = p2_draft.copy()
-                        
-                        st.session_state.limit = limit
-                        st.session_state.p1_score = 0
-                        st.session_state.p2_score = 0
-                        st.session_state.current_round = 0
-                        st.session_state.match_log = []
-                        
-                        timestamp = datetime.now().strftime("%H%M%S")
-                        st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
-                        
-                        # 3. Salta o Reshuffle inicial e vai direto para a batalha!
-                        st.session_state.phase = 'battle'
-                        
-                        # Limpa as keys temporárias do setup
-                        for k in ['setup_p1_1', 'setup_p1_2', 'setup_p1_3', 'setup_p2_1', 'setup_p2_2', 'setup_p2_3']: 
-                            if k in st.session_state: del st.session_state[k]
-                            
-                        auto_save_battle() 
-                        st.rerun()
-                    else:
-                        st.error("⚠️ Encontrámos Beys repetidos na seleção!")
-                else:
-                    st.warning("⚠️ Seleciona os dois jogadores e a ordem completa dos 3 combos para cada um!")
-
-# ==========================================
-# FASE 2: ORDERING / RESHUFFLE
-# ==========================================
-elif st.session_state.phase == 'ordering':
-    st.markdown("""
-    <div style='background-color: #ff4b4b; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;'>
-        <h1 style='color: white; margin: 0; font-size: 3rem;'>🚨 RESHUFFLE 🚨</h1>
-        <p style='color: white; font-size: 1.2rem; margin: 0;'>Escolham a nova ordem secreta dos Beys!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.info("💡 Dica: Ao escolheres 2 combos, o 3º preenche automaticamente.")
-    
-    if st.session_state.history:
-        st.button("↩️ OOPS! Desfazer Última Ação", use_container_width=True, on_click=undo_last_action)
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(f"### 🟢 {st.session_state.p1_name}")
-        p1_1 = st.selectbox("1º Beyblade (P1)", st.session_state.p1_deck_pool, index=None, key="p1_1", on_change=auto_fill_p1)
-        p1_2 = st.selectbox("2º Beyblade (P1)", st.session_state.p1_deck_pool, index=None, key="p1_2", on_change=auto_fill_p1)
-        p1_3 = st.selectbox("3º Beyblade (P1)", st.session_state.p1_deck_pool, index=None, key="p1_3", on_change=auto_fill_p1)
-        
-    with c2:
-        st.markdown(f"### 🔴 {st.session_state.p2_name}")
-        p2_1 = st.selectbox("1º Beyblade (P2)", st.session_state.p2_deck_pool, index=None, key="p2_1", on_change=auto_fill_p2)
-        p2_2 = st.selectbox("2º Beyblade (P2)", st.session_state.p2_deck_pool, index=None, key="p2_2", on_change=auto_fill_p2)
-        p2_3 = st.selectbox("3º Beyblade (P2)", st.session_state.p2_deck_pool, index=None, key="p2_3", on_change=auto_fill_p2)
-
-    st.write("")
-    col_back, col_enter = st.columns(2)
-    
-    with col_back:
-        if st.button("🚪 Voltar ao Lobby", use_container_width=True):
-            evt = st.session_state.active_event
-            st.session_state.clear()
-            st.session_state.logged_in = True
-            st.session_state.active_event = evt
-            st.session_state.phase = 'lobby'
-            st.rerun()
-            
-    with col_enter:
-        if st.button("⚔️ Entrar na Arena!", use_container_width=True, type="primary"):
-            p1_choices = [p1_1, p1_2, p1_3]
-            p2_choices = [p2_1, p2_2, p2_3]
-            
-            if None in p1_choices or None in p2_choices:
-                st.error("⚠️ Preenche os 3 lugares!")
-            elif len(set(p1_choices)) == 3 and len(set(p2_choices)) == 3:
-                st.session_state.p1_active_deck = p1_choices
-                st.session_state.p2_active_deck = p2_choices
-                st.session_state.current_round = 0 
-                st.session_state.phase = 'battle'
-                
-                for k in ['p1_1', 'p1_2', 'p1_3', 'p2_1', 'p2_2', 'p2_3']: del st.session_state[k]
-                auto_save_battle() 
-                st.rerun()
-            else:
-                st.error("⚠️ Encontrámos Beys repetidos!")
-
-# ==========================================
-# FASE 3: BATTLE LOOP (ULTRA-COMPACTO PARA LANDSCAPE)
-# ==========================================
-elif st.session_state.phase == 'battle':
-    st.markdown("""
-    <style>
-        /* 1. Esmagar margens do contentor principal do Streamlit */
-        .block-container {
-            padding-top: 0.5rem !important;
-            padding-bottom: 0.5rem !important;
-            gap: 0.2rem !important;
-        }
-        
-        /* 2. Esmagar o padding dentro dos "Cartões" com borda */
-        div[data-testid="stVerticalBlockBorderWrapper"] > div {
-            padding: 0.5rem !important;
-            gap: 0.2rem !important;
-        }
-
-        /* 3. Botões de Ação mais finos e letras ajustadas */
-        div.stButton > button {
-            min-height: 45px !important; 
-            height: auto !important;
-            border-radius: 6px !important; 
-            white-space: normal !important; 
-            margin-bottom: 0px !important;
-            padding: 2px !important;
-        }
-        div.stButton > button p {
-            font-size: clamp(12px, 2.5vw, 15px) !important;
-            font-weight: 800 !important;
-            line-height: 1 !important;
-            margin: 0 !important;
-        }
-        
-        /* 4. Grelha 2x2 Lado a Lado blindada */
-        .element-container:has(#btn-grid-p1) + .element-container > div[data-testid="stHorizontalBlock"],
-        .element-container:has(#btn-grid-p2) + .element-container > div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 0.2rem !important;
-        }
-        
-        .element-container:has(#btn-grid-p1) + .element-container > div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-        .element-container:has(#btn-grid-p2) + .element-container > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            width: 50% !important;
-            min-width: 48% !important;
-            flex: 1 1 50% !important;
-        }
-        
-        /* 5. Grelha dos botões inferiores (Lobby e Undo) */
-        .element-container:has(#bottom-btns) + .element-container > div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 0.5rem !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    r_idx = st.session_state.current_round
-    bey_p1 = st.session_state.p1_active_deck[r_idx]
-    bey_p2 = st.session_state.p2_active_deck[r_idx]
-    
-    st.markdown(f"<p style='text-align: center; color: gray; margin: 0; padding: 0; font-size: 0.8rem;'><b>RONDA {r_idx + 1}/3 | Jogam até {st.session_state.limit} pts</b></p>", unsafe_allow_html=True)
-    
-    c_p1, c_p2 = st.columns(2)
-    
-    with c_p1:
-        with st.container(border=True):
-            st.markdown(f"<h4 style='text-align: center; margin: 0; padding: 0; line-height: 1.2;'>{st.session_state.p1_name}</h4>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3rem, 8vw, 4rem); color: #4CAF50; line-height: 0.9; margin: 0; padding: 0;'>{st.session_state.p1_score}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.75rem; margin: 0 0 5px 0; padding: 0; line-height: 1;'>🛡️ {bey_p1}</p>", unsafe_allow_html=True)
-            
-            st.markdown('<span id="btn-grid-p1"></span>', unsafe_allow_html=True)
-            btn1_p1, btn2_p1 = st.columns(2)
-            with btn1_p1:
-                st.button("🌀 Spin (+1)", key="p1_spin", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Spin Finish", 1, bey_p1, bey_p2))
-                st.button("💥 Burst (+2)", key="p1_burst", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Burst Finish", 2, bey_p1, bey_p2))
-            with btn2_p1:
-                st.button("💨 Over (+2)", key="p1_over", use_container_width=True, on_click=register_result, args=(st.session_state.p1_name, "Over Finish", 2, bey_p1, bey_p2))
-                st.button("⚡ X-Treme (+3)", key="p1_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p1_name, "X-Treme Finish", 3, bey_p1, bey_p2))
-
-    with c_p2:
-        with st.container(border=True):
-            st.markdown(f"<h4 style='text-align: center; margin: 0; padding: 0; line-height: 1.2;'>{st.session_state.p2_name}</h4>", unsafe_allow_html=True)
-            st.markdown(f"<h1 style='text-align: center; font-size: clamp(3rem, 8vw, 4rem); color: #FF4B4B; line-height: 0.9; margin: 0; padding: 0;'>{st.session_state.p2_score}</h1>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.75rem; margin: 0 0 5px 0; padding: 0; line-height: 1;'>🛡️ {bey_p2}</p>", unsafe_allow_html=True)
-            
-            st.markdown('<span id="btn-grid-p2"></span>', unsafe_allow_html=True)
-            btn1_p2, btn2_p2 = st.columns(2)
-            with btn1_p2:
-                st.button("🌀 Spin (+1)", key="p2_spin", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Spin Finish", 1, bey_p2, bey_p1))
-                st.button("💥 Burst (+2)", key="p2_burst", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Burst Finish", 2, bey_p2, bey_p1))
-            with btn2_p2:
-                st.button("💨 Over (+2)", key="p2_over", use_container_width=True, on_click=register_result, args=(st.session_state.p2_name, "Over Finish", 2, bey_p2, bey_p1))
-                st.button("⚡ X-Treme (+3)", key="p2_extreme", use_container_width=True, type="primary", on_click=register_result, args=(st.session_state.p2_name, "X-Treme Finish", 3, bey_p2, bey_p1))
-            
-    st.markdown('<span id="bottom-btns"></span>', unsafe_allow_html=True)
-    aux_col1, aux_col2 = st.columns(2)
-    with aux_col1:
-        if st.button("🚪 Voltar ao Lobby", use_container_width=True):
-            evt = st.session_state.active_event
-            st.session_state.clear()
-            st.session_state.logged_in = True
-            st.session_state.active_event = evt
-            st.session_state.phase = 'lobby'
-            st.rerun()
-            
-    with aux_col2:
-        if st.session_state.history:
-            st.button("↩️ OOPS! Desfazer Última Ação", use_container_width=True, on_click=undo_last_action)
-
-# ==========================================
-# FASE 4: MATCH OVER
-# ==========================================
-elif st.session_state.phase == 'match_over':
-    st.balloons()
-    st.success("🏆 BATALHA TERMINADA!")
-    st.markdown(f"<h1 style='text-align: center; font-size: 5rem;'>{st.session_state.p1_score} - {st.session_state.p2_score}</h1>", unsafe_allow_html=True)
-    
-    if st.session_state.p1_score > st.session_state.p2_score:
-        st.markdown(f"<h2 style='text-align: center;'>Vencedor: 👑 {st.session_state.p1_name}</h2>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<h2 style='text-align: center;'>Vencedor: 👑 {st.session_state.p2_name}</h2>", unsafe_allow_html=True)
-        
-    st.write("")
-    
-    if 'arquivado' not in st.session_state:
-        archive_match_to_gsheets(
-            st.session_state.active_event,
-            st.session_state.battle_id,
-            st.session_state.p1_name, 
-            st.session_state.p2_name,
-            st.session_state.p1_score,
-            st.session_state.p2_score,
-            st.session_state.match_log
-        )
-        st.session_state.arquivado = True
-        
-        db = load_db()
-        if st.session_state.battle_id in db:
-            db[st.session_state.battle_id]["Status"] = "Terminada" 
-            save_db(db)
-
-    col_undo, col_new = st.columns(2)
-    with col_undo:
-        if st.session_state.history:
-            if st.button("↩️ Desfazer Último Ponto", use_container_width=True):
-                del st.session_state['arquivado']
-                undo_last_action()
-                st.rerun()
-            
-    with col_new:
-        if st.button("🔄 Voltar ao Lobby do Evento", use_container_width=True, type="primary"):
-            evento_atual = st.session_state.active_event
-            st.session_state.clear()
-            st.session_state.logged_in = True
-            st.session_state.active_event = evento_atual
-            st.session_state.phase = 'lobby'
-            st.rerun()
-            
-    st.divider()
-    st.markdown("### Match Log Oficial:")
-    df_log = pd.DataFrame(st.session_state.match_log, columns=["Ação Registada"])
-    st.dataframe(df_log, use_container_width=True)
+        col_back, col
