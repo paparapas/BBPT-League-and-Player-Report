@@ -398,12 +398,20 @@ elif st.session_state.phase == 'setup':
         with c1:
             p1_name = st.selectbox("Jogador 1:", options=lista_jogadores, index=None)
             p1_pool = current_db.get(p1_name, []) if p1_name else []
-            p1_draft = st.multiselect(f"Combos P1:", p1_pool, max_selections=3, disabled=not p1_name)
+            st.markdown("**Ordem Inicial (Escolhe 3 de 4):**")
+            p1_1 = st.selectbox("1º Beyblade (P1)", p1_pool, index=None, key="setup_p1_1", disabled=not p1_name)
+            p1_2 = st.selectbox("2º Beyblade (P1)", p1_pool, index=None, key="setup_p1_2", disabled=not p1_name)
+            p1_3 = st.selectbox("3º Beyblade (P1)", p1_pool, index=None, key="setup_p1_3", disabled=not p1_name)
+            p1_draft = [p1_1, p1_2, p1_3]
 
         with c2:
             p2_name = st.selectbox("Jogador 2:", options=lista_jogadores, index=None)
             p2_pool = current_db.get(p2_name, []) if p2_name else []
-            p2_draft = st.multiselect(f"Combos P2:", p2_pool, max_selections=3, disabled=not p2_name)
+            st.markdown("**Ordem Inicial (Escolhe 3 de 4):**")
+            p2_1 = st.selectbox("1º Beyblade (P2)", p2_pool, index=None, key="setup_p2_1", disabled=not p2_name)
+            p2_2 = st.selectbox("2º Beyblade (P2)", p2_pool, index=None, key="setup_p2_2", disabled=not p2_name)
+            p2_3 = st.selectbox("3º Beyblade (P2)", p2_pool, index=None, key="setup_p2_3", disabled=not p2_name)
+            p2_draft = [p2_1, p2_2, p2_3]
 
         limit = st.radio("Limite de Pontos:", [4, 5, 7], horizontal=True)
 
@@ -423,25 +431,41 @@ elif st.session_state.phase == 'setup':
             if st.button("▶️ Iniciar Batalha", use_container_width=True, type="primary"):
                 if p1_name and p2_name and p1_name == p2_name:
                     st.error("⚠️ Um jogador não pode batalhar contra si próprio!")
-                elif p1_name and p2_name and len(p1_draft) == 3 and len(p2_draft) == 3:
-                    st.session_state.p1_name = p1_name
-                    st.session_state.p2_name = p2_name
-                    st.session_state.p1_deck_pool = p1_draft
-                    st.session_state.p2_deck_pool = p2_draft
-                    st.session_state.limit = limit
-                    st.session_state.p1_score = 0
-                    st.session_state.p2_score = 0
-                    st.session_state.current_round = 0
-                    st.session_state.match_log = []
-                    
-                    timestamp = datetime.now().strftime("%H%M%S")
-                    st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
-                    
-                    st.session_state.phase = 'ordering'
-                    auto_save_battle() 
-                    st.rerun()
+                elif p1_name and p2_name and None not in p1_draft and None not in p2_draft:
+                    if len(set(p1_draft)) == 3 and len(set(p2_draft)) == 3:
+                        st.session_state.p1_name = p1_name
+                        st.session_state.p2_name = p2_name
+                        
+                        # 1. Tranca a pool apenas aos 3 beys escolhidos para os futuros reshuffles
+                        st.session_state.p1_deck_pool = p1_draft.copy()
+                        st.session_state.p2_deck_pool = p2_draft.copy()
+                        
+                        # 2. Define já a ordem ativa para a batalha
+                        st.session_state.p1_active_deck = p1_draft.copy()
+                        st.session_state.p2_active_deck = p2_draft.copy()
+                        
+                        st.session_state.limit = limit
+                        st.session_state.p1_score = 0
+                        st.session_state.p2_score = 0
+                        st.session_state.current_round = 0
+                        st.session_state.match_log = []
+                        
+                        timestamp = datetime.now().strftime("%H%M%S")
+                        st.session_state.battle_id = f"{p1_name}_{p2_name}_{timestamp}"
+                        
+                        # 3. Salta o Reshuffle inicial e vai direto para a batalha!
+                        st.session_state.phase = 'battle'
+                        
+                        # Limpa as keys temporárias do setup
+                        for k in ['setup_p1_1', 'setup_p1_2', 'setup_p1_3', 'setup_p2_1', 'setup_p2_2', 'setup_p2_3']: 
+                            if k in st.session_state: del st.session_state[k]
+                            
+                        auto_save_battle() 
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Encontrámos Beys repetidos na seleção!")
                 else:
-                    st.warning("⚠️ Seleciona os dois jogadores e exatamente 3 combos para cada um!")
+                    st.warning("⚠️ Seleciona os dois jogadores e a ordem completa dos 3 combos para cada um!")
 
 # ==========================================
 # FASE 2: ORDERING / RESHUFFLE
