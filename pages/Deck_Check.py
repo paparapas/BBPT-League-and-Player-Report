@@ -615,18 +615,28 @@ elif menu == "⚙️ Painel de Organização":
             
             recs_admin = get_all_records_cached(evento_verificar)
             
-            # --- ZONA DE MÉTRICA E BOTÃO DE PDF ---
+        # --- ZONA DE MÉTRICA E BOTÃO DE PDF ---
             col_metrica, col_pdf = st.columns([1, 1])
             with col_metrica:
                 st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
             
             with col_pdf:
                 if recs_admin:
-                    with st.spinner("A preparar PDF (pode demorar uns segundos devido às fotos)..."):
-                        pdf_data = gerar_pdf_decks(recs_admin, evento_verificar)
+                    # Criamos uma chave única na memória para o PDF deste evento específico
+                    pdf_key = f"pdf_pronto_{evento_verificar}"
+                    
+                    # Se o PDF ainda não foi gerado, mostramos o botão para iniciar o processo
+                    if pdf_key not in st.session_state:
+                        if st.button("🛠️ Preparar PDF para Download", use_container_width=True):
+                            with st.spinner("A extrair fotos e a gerar o PDF (pode demorar uns segundos)..."):
+                                st.session_state[pdf_key] = gerar_pdf_decks(recs_admin, evento_verificar)
+                                st.rerun() # Atualiza a interface instantaneamente para mostrar o botão de download
+                    
+                    # Se já foi gerado (está na memória), mostramos logo o botão de download final
+                    else:
                         st.download_button(
-                            label="📄 Descarregar Relatório PDF dos Decks",
-                            data=pdf_data,
+                            label="📄 Descarregar Relatório PDF",
+                            data=st.session_state[pdf_key],
                             file_name=f"DeckCheck_{evento_verificar.replace(' ', '_')}.pdf",
                             mime="application/pdf",
                             use_container_width=True,
@@ -634,13 +644,3 @@ elif menu == "⚙️ Painel de Organização":
                         )
             st.divider()
             # --------------------------------------
-            
-            for d in recs_admin:
-                with st.expander(f"👤 {d['Player']}"):
-                    c1, c2 = st.columns([2, 1])
-                    with c1:
-                        for i in range(1, 5):
-                            if d.get(f'Combo_{i}'): st.write(f"**Combo {i}:** {d[f'Combo_{i}']}")
-                    c2.image(d['Image_URL'])
-        else:
-            st.info("Ainda não há eventos registados.")
