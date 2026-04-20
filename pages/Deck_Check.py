@@ -11,6 +11,10 @@ import base64
 import gspread
 from google.oauth2.service_account import Credentials
 from st_keyup import st_keyup
+import tempfile
+import io
+from PIL import Image
+from fpdf import FPDF
 
 # ==========================================
 # CONFIGURAÇÃO DE LOGS E PÁGINA
@@ -258,6 +262,58 @@ def append_suggestion(sug_text):
         words[-1] = sug_text
         st.session_state.smart_val = " ".join(words) + " "
         st.session_state.keyup_key += 1
+
+@st.cache_data(ttl=120)
+def gerar_pdf_decks(records, event_name):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    for d in records:
+        pdf.add_page()
+        # Header - Player
+        pdf.set_font("Arial", 'B', 16)
+        # Sanitizar nome para evitar erros no FPDF (que usa Latin-1 base)
+        player_name = str(d['Player']).encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(0, 10, f"Blader: {player_name}", ln=True, align='C')
+        pdf.ln(5)
+        
+        # Combos
+        pdf.set_font("Arial", size=12)
+        for i in range(1, 5):
+            combo = d.get(f'Combo_{i}')
+            if combo:
+                combo_safe = str(combo).encode('latin-1', 'replace').decode('latin-1')
+                pdf.cell(0, 8, f"Combo {i}: {combo_safe}", ln=True)
+        pdf.ln(10)
+        
+        # Imagem Processada
+        img_url = d.get('Image_URL')
+        if img_url:
+            try:
+                res = requests.get(img_url, timeout=10)
+                if res.status_code == 200:
+                    img = Image.open(io.BytesIO(res.content))
+                    # Redimensionar para um tamanho máximo uniforme (mantém a proporção)
+                    img.thumbnail((600, 600))
+                    
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        img.save(tmp_file, format="JPEG")
+                        tmp_path = tmp_file.name
+                    
+                    # Inserir imagem centrada (x=45 aproxima o centro para w=120mm numa folha A4)
+                    pdf.image(tmp_path, x=45, w=120)
+                    os.remove(tmp_path)
+            except:
+                pdf.set_font("Arial", 'I', 10)
+                pdf.cell(0, 10, "[Erro ao descarregar e processar a fotografia deste deck]", ln=True, align='C')
+                
+    # Extrair os bytes do PDF com segurança (dependendo da versão FPDF instalada)
+    saida = pdf.output(dest='S')
+    if type(saida) is str:
+        return saida.encode('latin1')
+    return bytes(saida)
 
 # ==========================================
 # INTERFACE
@@ -558,7 +614,26 @@ elif menu == "⚙️ Painel de Organização":
             evento_verificar = st.selectbox("Escolher Evento para Visualizar:", todos_eventos, format_func=marcador_status)
             
             recs_admin = get_all_records_cached(evento_verificar)
-            st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
+            
+            # --- ZONA DE MÉTRICA E BOTÃO DE PDF ---
+            col_metrica, col_pdf = st.columns([1, 1])
+            with col_metrica:
+                st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
+            
+            with col_pdf:
+                if recs_admin:
+                    with st.spinner("A preparar PDF (pode demorar uns segundos devido às fotos)..."):
+                        pdf_data = gerar_pdf_decks(recs_admin, evento_verificar)
+                        st.download_button(
+                            label="📄 Descarregar Relatório PDF dos Decks",
+                            data=pdf_data,
+                            file_name=f"DeckCheck_{evento_verificar.replace(' ', '_')}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True,
+                            type="primary"
+                        )
+            st.divider()
+            # --------------------------------------
             
             for d in recs_admin:
                 with st.expander(f"👤 {d['Player']}"):
