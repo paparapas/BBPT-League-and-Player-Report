@@ -615,7 +615,7 @@ elif menu == "⚙️ Painel de Organização":
             
             recs_admin = get_all_records_cached(evento_verificar)
             
-        # --- ZONA DE MÉTRICA E BOTÃO DE PDF ---
+            # --- ZONA DE MÉTRICA E BOTÃO DE PDF ---
             col_metrica, col_pdf = st.columns([1, 1])
             with col_metrica:
                 st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
@@ -644,3 +644,14 @@ elif menu == "⚙️ Painel de Organização":
                         )
             st.divider()
             # --------------------------------------
+            
+            # 👇 BLOCO RESTAURADO: MOSTRAR OS DECKS ONLINE 👇
+            for d in recs_admin:
+                with st.expander(f"👤 {d['Player']}"):
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        for i in range(1, 5):
+                            if d.get(f'Combo_{i}'): st.write(f"**Combo {i}:** {d[f'Combo_{i}']}")
+                    c2.image(d['Image_URL'])
+        else:
+            st.info("Ainda não há eventos registados.")
