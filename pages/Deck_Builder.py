@@ -258,7 +258,7 @@ def render_part_card(part_name, category):
         st.markdown(f'<div class="part-card" style="opacity: 0.4;"><div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #999;">?</div><div class="part-category">{category}</div><div class="part-name">---</div></div>', unsafe_allow_html=True)
         return
     img_url = images_map.get(part_name, "https://via.placeholder.com/150?text=No+Image")
-    st.markdown(f'<div class="part-card"><img src="{img_url}" alt="{part_name}"><div class="part-category">{category}</div><div class="part-name" title="{part_name}">{part_name}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="part-card"><img src="{img_url}" alt="{part_name}" referrerpolicy="no-referrer"><div class="part-category">{category}</div><div class="part-name" title="{part_name}">{part_name}</div></div>', unsafe_allow_html=True)
 
 for i in range(st.session_state.deck_size):
     with st.container(border=True):
@@ -268,15 +268,15 @@ for i in range(st.session_state.deck_size):
         with c_type:
             ct = st.selectbox("Linha", ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"], key=f"b_c_{i}_type", label_visibility="collapsed")
             if ct == "Expand (CXE)":
-                st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;' referrerpolicy='no-referrer'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
         with c_spin:
             sp = st.selectbox("Rotação", ["Right Spin", "Left Spin"], key=f"b_c_{i}_spin", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
         with c_bt:
             bt = st.selectbox("Tipo", ["Attack", "Defense", "Stamina", "Balance"], key=f"b_c_{i}_bt", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+            st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
             
         st.write("") 
         
@@ -374,18 +374,18 @@ for i in range(st.session_state.deck_size):
             if c_low in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{c}' está repetido!"
             used_chips.add(c_low)
 
-        # 👇 CONSTRUÇÃO HTML 100% FLAT (SEM ESPAÇOS/PARÁGRAFOS) 👇
+        # 👇 IMAGENS AGORA PROTEGIDAS CONTRA BLOQUEIO 👇
         img_html = ""
         if ct in ["Basic (BX)", "Unique (UX)"]:
             hero_blade = st.session_state[f"b_c_{i}_main_blade"]
             url_blade = images_map.get(hero_blade, "https://via.placeholder.com/150")
-            img_html = f'<img class="combo-blade-img" src="{url_blade}" alt="Blade">'
+            img_html = f'<img class="combo-blade-img" src="{url_blade}" alt="Blade" referrerpolicy="no-referrer">'
         elif ct == "Custom (CX)":
             m_blade = st.session_state[f"b_c_{i}_main_blade"]
             l_chip = st.session_state[f"b_c_{i}_lock_chip"]
             url_main = images_map.get(m_blade, "https://via.placeholder.com/150")
             url_chip = images_map.get(l_chip, "https://via.placeholder.com/150")
-            img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-main" src="{url_main}" alt="Main"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip"></div>'
+            img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-main" src="{url_main}" alt="Main" referrerpolicy="no-referrer"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip" referrerpolicy="no-referrer"></div>'
         else: # Expand (CXE)
             o_blade = st.session_state[f"b_c_{i}_over_blade"]
             mt_blade = st.session_state[f"b_c_{i}_metal_blade"]
@@ -393,13 +393,13 @@ for i in range(st.session_state.deck_size):
             url_over = images_map.get(o_blade, "https://via.placeholder.com/150")
             url_metal = images_map.get(mt_blade, "https://via.placeholder.com/150")
             url_chip = images_map.get(l_chip, "https://via.placeholder.com/150")
-            img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-metal" src="{url_metal}" alt="Metal"><img class="composite-layer layer-main" src="{url_over}" alt="Over"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip"></div>'
+            img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-metal" src="{url_metal}" alt="Metal" referrerpolicy="no-referrer"><img class="composite-layer layer-main" src="{url_over}" alt="Over" referrerpolicy="no-referrer"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip" referrerpolicy="no-referrer"></div>'
 
         logos_html = ""
-        if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic">'
-        if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique">'
-        if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom">'
-        if "Expand" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
+        if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic" referrerpolicy="no-referrer">'
+        if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique" referrerpolicy="no-referrer">'
+        if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom" referrerpolicy="no-referrer">'
+        if "Expand" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom" referrerpolicy="no-referrer"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand" referrerpolicy="no-referrer">'
 
         combo_data_for_visual.append({
             "image_html": img_html,
@@ -426,7 +426,7 @@ with col_export:
 if not missing_parts and not has_duplicates:
     html_rows = ""
     for c in combo_data_for_visual:
-        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
+        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin" referrerpolicy="no-referrer"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type" referrerpolicy="no-referrer"><span class="combo-text">{c["name"]}</span></div></div></div>'
     
     visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">DECK SUMMARY</div>{html_rows}</div>'
     st.markdown(visual_report_html, unsafe_allow_html=True)
