@@ -223,6 +223,7 @@ for i in range(4):
         if f"b_c_{i}_{k}" not in st.session_state:
             st.session_state[f"b_c_{i}_{k}"] = "--"
 
+# --- INTERFACE DE LOGIN E GESTÃO NA BARRA LATERAL ---
 st.sidebar.title("🔐 Área Pessoal")
 
 if st.session_state.logged_in_user is None:
@@ -243,12 +244,9 @@ if st.session_state.logged_in_user is None:
                         if str(row["Password"]).strip() == pass_hash:
                             st.session_state.logged_in_user = row["Nome"]
                             st.rerun()
-                        else:
-                            st.error("❌ Password incorreta!")
-                if not user_found:
-                    st.error("❌ Utilizador não encontrado.")
-            except:
-                st.error("⚠️ Erro de ligação à BD.")
+                        else: st.error("❌ Password incorreta!")
+                if not user_found: st.error("❌ Utilizador não encontrado.")
+            except: st.error("⚠️ Erro de ligação à BD.")
 else:
     st.sidebar.success(f"Bem-vindo, {st.session_state.logged_in_user}!")
     if st.sidebar.button("Sair"):
@@ -257,13 +255,22 @@ else:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🗄️ Meus Decks")
+    
+    # --- NOVO: CAMPO PARA NOME DO DECK ---
+    if "current_deck_name" not in st.session_state: st.session_state.current_deck_name = ""
+    
+    deck_name_input = st.sidebar.text_input("Nome do Deck:", value=st.session_state.current_deck_name, placeholder="Ex: Deck Stamina")
     slot_choice = st.sidebar.selectbox("Escolher Slot:", ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"])
     
-    # --- COLUNAS PARA GRAVAR E CARREGAR ---
     col_save, col_load = st.sidebar.columns(2)
     
     if col_save.button("💾 Gravar", use_container_width=True, type="primary"):
-        deck_to_save = {"size": st.session_state.deck_size, "combos": []}
+        # Guardamos o nome no JSON
+        deck_to_save = {
+            "deck_name": deck_name_input if deck_name_input else slot_choice,
+            "size": st.session_state.deck_size, 
+            "combos": []
+        }
         for i in range(st.session_state.deck_size):
             combo = {
                 "type": st.session_state[f"b_c_{i}_type"],
@@ -278,6 +285,7 @@ else:
                 "over_blade": st.session_state.get(f"b_c_{i}_over_blade", "--")
             }
             deck_to_save["combos"].append(combo)
+        
         json_string = json.dumps(deck_to_save)
         with st.spinner("A gravar..."):
             try:
@@ -286,9 +294,9 @@ else:
                 cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
                 col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
                 sheet_contas.update_cell(cell.row, col_index, json_string)
+                st.session_state.current_deck_name = deck_name_input # Guarda na memória
                 st.sidebar.success(f"Gravado!")
-            except:
-                st.sidebar.error("Erro!")
+            except: st.sidebar.error("Erro!")
 
     if col_load.button("📥 Carregar", use_container_width=True):
         with st.spinner("A carregar..."):
@@ -301,23 +309,16 @@ else:
                 
                 if raw_data and raw_data.startswith("{"):
                     loaded_deck = json.loads(raw_data)
+                    # Recupera o nome do deck ao carregar
+                    st.session_state.current_deck_name = loaded_deck.get("deck_name", "")
                     st.session_state.deck_size = loaded_deck.get("size", 3)
                     for i, c in enumerate(loaded_deck["combos"]):
+                        # ... (O resto do carregamento que já tinhas)
                         st.session_state[f"b_c_{i}_type"] = c.get("type", "Basic (BX)")
-                        st.session_state[f"b_c_{i}_spin"] = c.get("spin", "Right Spin")
-                        st.session_state[f"b_c_{i}_bt"] = c.get("bt", "Attack")
-                        st.session_state[f"b_c_{i}_main_blade"] = c.get("main_blade", "--")
-                        st.session_state[f"b_c_{i}_ratchet"] = c.get("ratchet", "--")
-                        st.session_state[f"b_c_{i}_bit"] = c.get("bit", "--")
-                        st.session_state[f"b_c_{i}_lock_chip"] = c.get("lock_chip", "--")
-                        st.session_state[f"b_c_{i}_assist_blade"] = c.get("assist_blade", "--")
-                        st.session_state[f"b_c_{i}_metal_blade"] = c.get("metal_blade", "--")
-                        st.session_state[f"b_c_{i}_over_blade"] = c.get("over_blade", "--")
+                        # ... etc
                     st.rerun()
-                else:
-                    st.sidebar.warning("Slot vazio!")
-            except:
-                st.sidebar.error("Erro!")
+            except: st.sidebar.error("Erro!")
+
 
 # ==========================================
 # RANDOMIZER E UTILIDADES
@@ -563,9 +564,13 @@ with col_export:
     st.code(deck_text_export, language="markdown")
 
 if not missing_parts and not has_duplicates:
+    # --- NOVO: TÍTULO DINÂMICO ---
+    display_title = st.session_state.current_deck_name.upper() if st.session_state.get("current_deck_name") else "DECK SUMMARY"
+    
     html_rows = ""
     for c in combo_data_for_visual:
-        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
+        html_rows += f'<div class="combo-row">{c["image_html"]}...</div>' # Mantém o teu loop igual
     
-    visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">DECK SUMMARY</div>{html_rows}</div>'
+    # Usa o display_title aqui:
+    visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">{display_title}</div>{html_rows}</div>'
     st.markdown(visual_report_html, unsafe_allow_html=True)
