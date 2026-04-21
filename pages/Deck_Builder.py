@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import random
 import re
+import base64
+import os
 
 # ==========================================
 # CONFIGURAÇÃO DE PÁGINA E CSS
@@ -112,22 +114,43 @@ st.markdown("""
 st.title("🛠️ Custom Deck Builder")
 st.markdown("Constrói, testa e exporta os teus decks. Validação automática de regras BBPT ativada.")
 
+# ==========================================
+# CONVERSOR DE IMAGENS LOCAIS PARA BASE64
+# ==========================================
+@st.cache_data
+def get_local_image_as_base64(file_name):
+    # Procura o ficheiro na raiz ou na diretoria acima (caso este ficheiro esteja numa sub-pasta)
+    paths_to_try = [file_name, os.path.join("..", file_name)]
+    
+    for path in paths_to_try:
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            return f"data:image/png;base64,{encoded}"
+            
+    # Se não encontrar a imagem no repositório, retorna um placeholder
+    return "https://via.placeholder.com/150"
+
+# Dicionários atualizados para ir buscar à pasta local em vez do ImgBB
 ICONS = {
-    "Right Spin": "https://i.ibb.co/8LvSMs4x/Right-Spin-logo-Beyblade-X.webp",
-    "Left Spin": "https://i.ibb.co/jZLHmGqc/Left-Spin-logo-Beyblade-X.webp",
-    "Attack": "https://i.ibb.co/1HqBybp/Attack-logo-Beyblade-X.webp",
-    "Defense": "https://i.ibb.co/v4bBFrz4/Defense-logo-Beyblade-X.webp",
-    "Stamina": "https://i.ibb.co/Q7Wxsj9S/Stamina-logo-Beyblade-X.webp",
-    "Balance": "https://i.ibb.co/8DwRCggq/Balance-logo-Beyblade-X.webp"
+    "Right Spin": get_local_image_as_base64("Right-Spin_logo_Beyblade_X.png"),
+    "Left Spin": get_local_image_as_base64("Left-Spin_logo_Beyblade_X.png"),
+    "Attack": get_local_image_as_base64("Attack_logo_Beyblade_X.png"),
+    "Defense": get_local_image_as_base64("Defense_logo_Beyblade_X.png"),
+    "Stamina": get_local_image_as_base64("Stamina_logo_Beyblade_X.png"),
+    "Balance": get_local_image_as_base64("Balance_logo_Beyblade_X.png")
 }
 
 LINE_LOGOS = {
-    "Basic (BX)": "https://i.ibb.co/SDHV4vtr/Basic-Line-Logo.webp",
-    "Unique (UX)": "https://i.ibb.co/tM5CKKRw/Unique-Line-Logo.webp",
-    "Custom (CX)": "https://i.ibb.co/F4fh7bw0/Custom-Line-Logo.webp",
-    "Expand (CXE)": "https://i.ibb.co/20XjSqh5/Expand-Infinity.webp"
+    "Basic (BX)": get_local_image_as_base64("Basic_Line_Logo - Copy.png"),
+    "Unique (UX)": get_local_image_as_base64("Unique_Line_Logo - Copy.png"),
+    "Custom (CX)": get_local_image_as_base64("Custom_Line.png"),
+    "Expand (CXE)": get_local_image_as_base64("Expand_Infinity.png")
 }
 
+# ==========================================
+# LEITURA DO EXCEL
+# ==========================================
 DATASET_PARTS = "Dataset_BeybladeParts_Final_Images.xlsx"
 
 @st.cache_data
@@ -268,15 +291,15 @@ for i in range(st.session_state.deck_size):
         with c_type:
             ct = st.selectbox("Linha", ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"], key=f"b_c_{i}_type", label_visibility="collapsed")
             if ct == "Expand (CXE)":
-                st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;' referrerpolicy='no-referrer'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
         with c_spin:
             sp = st.selectbox("Rotação", ["Right Spin", "Left Spin"], key=f"b_c_{i}_spin", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
+            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
         with c_bt:
             bt = st.selectbox("Tipo", ["Attack", "Defense", "Stamina", "Balance"], key=f"b_c_{i}_bt", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;' referrerpolicy='no-referrer'>", unsafe_allow_html=True)
+            st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
             
         st.write("") 
         
@@ -374,7 +397,6 @@ for i in range(st.session_state.deck_size):
             if c_low in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{c}' está repetido!"
             used_chips.add(c_low)
 
-        # 👇 IMAGENS AGORA PROTEGIDAS CONTRA BLOQUEIO 👇
         img_html = ""
         if ct in ["Basic (BX)", "Unique (UX)"]:
             hero_blade = st.session_state[f"b_c_{i}_main_blade"]
@@ -396,10 +418,10 @@ for i in range(st.session_state.deck_size):
             img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-metal" src="{url_metal}" alt="Metal" referrerpolicy="no-referrer"><img class="composite-layer layer-main" src="{url_over}" alt="Over" referrerpolicy="no-referrer"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip" referrerpolicy="no-referrer"></div>'
 
         logos_html = ""
-        if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic" referrerpolicy="no-referrer">'
-        if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique" referrerpolicy="no-referrer">'
-        if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom" referrerpolicy="no-referrer">'
-        if "Expand" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom" referrerpolicy="no-referrer"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand" referrerpolicy="no-referrer">'
+        if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic">'
+        if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique">'
+        if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom">'
+        if "Expand" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
 
         combo_data_for_visual.append({
             "image_html": img_html,
@@ -426,7 +448,7 @@ with col_export:
 if not missing_parts and not has_duplicates:
     html_rows = ""
     for c in combo_data_for_visual:
-        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin" referrerpolicy="no-referrer"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type" referrerpolicy="no-referrer"><span class="combo-text">{c["name"]}</span></div></div></div>'
+        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
     
     visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">DECK SUMMARY</div>{html_rows}</div>'
     st.markdown(visual_report_html, unsafe_allow_html=True)
