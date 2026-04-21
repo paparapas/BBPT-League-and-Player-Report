@@ -146,8 +146,8 @@ def load_parts():
             all_v = [col for col in df.columns if "Unnamed" not in str(col)] + df.values.flatten().tolist()
             return sorted(list(set([str(x).strip() for x in all_v if pd.notna(x) and str(x).strip() not in ['-', '', 'nan']])))
         return {
-            "bx_ux_blades": get_clean_list('Blades BX-UX'),  # <-- Nova lista separada
-            "cx_blades": get_clean_list('Blades CX'),        # <-- Nova lista separada
+            "bx_ux_blades": get_clean_list('Blades BX-UX'), 
+            "cx_blades": get_clean_list('Blades CX'),       
             "ratchets": get_clean_list('Ratchets'),
             "bits": get_clean_list('Bits'), 
             "assist_blades": get_clean_list('Assist Blades'),
@@ -164,17 +164,15 @@ def get_dynamic_player_list():
         import json
         with open(DB_MASTER, "r", encoding="utf-8") as f:
             db = json.load(f)
-            # Lê diretamente as chaves do teu JSON como o teu código original fazia
             perfis = db.get("global_versus", {}).get("profiles", {})
             jogadores_oficiais = list(perfis.keys())
     except: pass
 
     jogadores_novos = []
     try:
-        # A CORREÇÃO ESTÁ AQUI: Usar a tua função get_gsheet_client()
         cliente_google = get_gsheet_client()
         sheet_jogadores = cliente_google.open_by_key(get_sheet_id()).worksheet("Jogadores")
-        jogadores_novos = sheet_jogadores.col_values(1)[1:] # Ignora a linha 1 (o cabeçalho "Nome")
+        jogadores_novos = sheet_jogadores.col_values(1)[1:] 
     except: pass
 
     todos = list(set(jogadores_oficiais + jogadores_novos))
@@ -195,7 +193,6 @@ def parse_smart_combo(text, parts_dict, alias_map):
     words_cl = [re.sub(r'[^a-zA-Z0-9]', '', w).lower() for w in words]
     text_cl = "".join(words_cl)
     
-    # Cria uma lista temporária que junta todas as main blades para procurar
     temp_dict = parts_dict.copy()
     temp_dict["all_main_blades"] = parts_dict.get("bx_ux_blades", []) + parts_dict.get("cx_blades", [])
     
@@ -231,11 +228,10 @@ def parse_smart_combo(text, parts_dict, alias_map):
                 
         parsed[key] = best
 
-    # Inteligência de Inferência de Formato:
     if parsed["over_blade"] != "--" or parsed["metal_blade"] != "--": 
         parsed["type"] = "CX Expanded"
     elif parsed["assist_blade"] != "--" or parsed["main_blade"] in parts_dict.get("cx_blades", []): 
-        parsed["type"] = "CX" # Se a main blade for do Excel CX, muda sozinho!
+        parsed["type"] = "CX" 
     else: 
         parsed["type"] = "Standard (BX / UX)"
     
@@ -270,14 +266,11 @@ def gerar_pdf_decks(records, event_name):
     
     for d in records:
         pdf.add_page()
-        # Header - Player
         pdf.set_font("Arial", 'B', 16)
-        # Sanitizar nome para evitar erros no FPDF (que usa Latin-1 base)
         player_name = str(d['Player']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(0, 10, f"Blader: {player_name}", ln=True, align='C')
         pdf.ln(5)
         
-        # Combos
         pdf.set_font("Arial", size=12)
         for i in range(1, 5):
             combo = d.get(f'Combo_{i}')
@@ -286,14 +279,12 @@ def gerar_pdf_decks(records, event_name):
                 pdf.cell(0, 8, f"Combo {i}: {combo_safe}", ln=True)
         pdf.ln(10)
         
-        # Imagem Processada
         img_url = d.get('Image_URL')
         if img_url:
             try:
                 res = requests.get(img_url, timeout=10)
                 if res.status_code == 200:
                     img = Image.open(io.BytesIO(res.content))
-                    # Redimensionar para um tamanho máximo uniforme (mantém a proporção)
                     img.thumbnail((600, 600))
                     
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
@@ -302,14 +293,12 @@ def gerar_pdf_decks(records, event_name):
                         img.save(tmp_file, format="JPEG")
                         tmp_path = tmp_file.name
                     
-                    # Inserir imagem centrada (x=45 aproxima o centro para w=120mm numa folha A4)
                     pdf.image(tmp_path, x=45, w=120)
                     os.remove(tmp_path)
             except:
                 pdf.set_font("Arial", 'I', 10)
                 pdf.cell(0, 10, "[Erro ao descarregar e processar a fotografia deste deck]", ln=True, align='C')
                 
-    # Extrair os bytes do PDF com segurança (dependendo da versão FPDF instalada)
     saida = pdf.output(dest='S')
     if type(saida) is str:
         return saida.encode('latin1')
@@ -348,14 +337,11 @@ if menu == "📝 Formulário Público":
         st.warning("🔒 Check-in Fechado.")
         st.stop()
     
-    # --- NOVA LINHA: Mostrar o nome do evento com destaque ---
     st.info(f"🏆 **A submeter para o evento:** {event_status['event_name']}")
     
     recs_list = get_all_records_cached(event_status["event_name"])
     st.metric("Decks Submetidos", len(recs_list))
     
-    recs_list = get_all_records_cached(event_status["event_name"])
-    st.metric("Decks Submetidos", len(recs_list))
     parts, alias_map = load_parts()
     player_list = load_players()
     
@@ -366,18 +352,21 @@ if menu == "📝 Formulário Público":
     lista_dinamica = get_dynamic_player_list()
     opcoes_blader = ["-- Selecionar --"] + lista_dinamica + ["Outro (Novo Jogador)"]
 
-    # 👇 NOVO BLOCO: IMPORTAR DO DECK BUILDER 👇
+    with st.container(border=True):
+        c_id1, c_id2 = st.columns([1, 2])
+        selected_player = c_id1.selectbox("Blader:", opcoes_blader)
+        custom_player = c_id2.text_input("Novo Blader:") if selected_player == "Outro (Novo Jogador)" else ""
+        
+        # 👇 BLOCO MÁGICO DE IMPORTAÇÃO E TRADUÇÃO 👇
         if selected_player not in ["-- Selecionar --", "Outro (Novo Jogador)"]:
             try:
                 client = get_gsheet_client()
                 sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
                 
-                # Tenta encontrar o jogador na coluna 1
                 try:
                     cell = sheet_contas.find(selected_player, in_column=1)
                     valores = sheet_contas.row_values(cell.row)
                     
-                    # Os slots estão nas colunas C até G (índices 2 a 6 no array)
                     slots_disponiveis = {}
                     for idx, slot_name in enumerate(["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"]):
                         col_idx = idx + 2
@@ -395,10 +384,7 @@ if menu == "📝 Formulário Público":
                                 dados_deck = json.loads(slots_disponiveis[deck_escolhido])
                                 st.session_state.num_combos = dados_deck["size"]
                                 
-                                # Carrega as peças com TRADUTOR de formatos!
                                 for i, c in enumerate(dados_deck["combos"]):
-                                    
-                                    # 1. O Tradutor de Nomes de Linhas
                                     tipo_builder = c.get("type", "Basic (BX)")
                                     if tipo_builder in ["Basic (BX)", "Unique (UX)"]: 
                                         tipo_check = "Standard (BX / UX)"
@@ -415,12 +401,12 @@ if menu == "📝 Formulário Público":
                                     st.session_state[f"c_{i}_assist_blade"] = c.get("assist_blade", "--")
                                     st.session_state[f"c_{i}_metal_blade"] = c.get("metal_blade", "--")
                                     st.session_state[f"c_{i}_over_blade"] = c.get("over_blade", "--")
-                                st.rerun() # Faz refresh à página para preencher tudo
+                                st.rerun() 
                 except gspread.exceptions.CellNotFound:
-                    pass # O Jogador ainda não tem conta registada, ignora silenciosamente
+                    pass 
             except Exception as e:
-                pass # Em caso de erro de net ou API, a app continua a funcionar normalmente
-        # 👆 FIM DO NOVO BLOCO 👆
+                pass
+        # 👆 FIM DO BLOCO MÁGICO 👆
         
     with st.container(border=True):
         st.subheader("⚡ Quick Add (Autocomplete Ativo)")
@@ -444,13 +430,11 @@ if menu == "📝 Formulário Público":
                 
         if "smart_match" in st.session_state:
             m = st.session_state.smart_match
-            
-            # Construir o texto de visualização consoante o tipo de combo
             if m["type"] == "Standard (BX / UX)":
                 display_text = f"{m.get('main_blade')} | {m.get('ratchet')} | {m.get('bit')}"
             elif m["type"] == "CX":
                 display_text = f"{m.get('lock_chip')} | {m.get('main_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
-            else: # CX Expanded
+            else: 
                 display_text = f"{m.get('lock_chip')} | {m.get('metal_blade')} | {m.get('over_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
                 
             st.info(f"🧩 Detetado ({m['type']}): {display_text}")
@@ -469,7 +453,6 @@ if menu == "📝 Formulário Público":
             
             if ct == "Standard (BX / UX)":
                 c1, c2, c3 = st.columns([2, 1, 1])
-                # APENAS AS LÂMINAS BX/UX
                 c1.selectbox("Blade", ["--"]+parts["bx_ux_blades"], key=f"c_{i}_main_blade")
                 c2.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c3.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
@@ -477,7 +460,6 @@ if menu == "📝 Formulário Público":
                 c1, c2, c3, c4, c5 = st.columns([1.5, 2, 2, 1.2, 1.2])
                 if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
                 else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
-                # APENAS AS LÂMINAS CX
                 c2.selectbox("Main", ["--"]+parts["cx_blades"], key=f"c_{i}_main_blade")
                 c3.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
                 c4.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
@@ -500,7 +482,6 @@ if menu == "📝 Formulário Público":
         name = custom_player if selected_player == "Outro (Novo Jogador)" else selected_player
         combos, missing_parts = [], False
         
-        # Variáveis de Repetição (Restauradas)
         has_duplicates = False
         dup_error_msg = ""
         used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
@@ -515,7 +496,6 @@ if menu == "📝 Formulário Público":
                 if v == "--" or not str(v).strip(): missing_parts = True
             combos.append(cd)
 
-            # Validações Detalhadas de Duplicados (Restauradas)
             if not missing_parts and not has_duplicates:
                 b = cd.get('over_blade', cd.get('main_blade', '--'))
                 if b != '--':
@@ -554,7 +534,6 @@ if menu == "📝 Formulário Público":
             with st.spinner("A gravar submissão..."):
                 save_submission_cloud(name, combos, up, event_status["event_name"])
                 
-                # --- NOVO BLOCO: Registo do Novo Jogador na aba "Jogadores" ---
                 if selected_player == "Outro (Novo Jogador)" and custom_player.strip() != "":
                     try:
                         client_g = get_gsheet_client()
@@ -564,11 +543,9 @@ if menu == "📝 Formulário Público":
                             sheet_jogadores.append_row([custom_player.strip()])
                     except: 
                         pass
-                # --------------------------------------------------------------
             
             st.success("✅ O teu Deck foi submetido na base de dados oficial!")
             
-            # Restaurado o Painel Markdown do Discord
             st.markdown("---")
             st.markdown(f"### 🔍 Resumo de Check-in: **{name}**")
             
@@ -605,27 +582,22 @@ elif menu == "⚙️ Painel de Organização":
     else:
         st.title("🛡️ Admin")
     
-    # 1. Criar a memória de autenticação (se não existir)
     if "admin_auth" not in st.session_state:
         st.session_state.admin_auth = False
 
-    # 2. Mostrar o Formulário de Login se não estiver autenticado
     if not st.session_state.admin_auth:
         with st.form("login_form"):
             pwd = st.text_input("Password:", type="password")
             submit = st.form_submit_button("Entrar no Painel 🔑")
             
             if submit:
-                # O .strip() garante que espaços acidentais não estragam a password
                 if pwd.strip() == ADMIN_PASSWORD:
                     st.session_state.admin_auth = True
-                    st.rerun() # Força a página a recarregar já autenticada
+                    st.rerun() 
                 else:
                     st.error("❌ Palavra-passe incorreta!")
 
-    # 3. Mostrar o Painel de Gestão se estiver autenticado
     if st.session_state.admin_auth:
-        # Botão prático para sair e trancar o painel novamente
         if st.button("Sair (Logout) 🔒"):
             st.session_state.admin_auth = False
             st.rerun()
@@ -647,43 +619,35 @@ elif menu == "⚙️ Painel de Organização":
         if col2.button("Limpar Cache 🔄"): st.cache_data.clear(); st.rerun()
         st.divider()
         
-        # --- NOVA SECÇÃO DE ESCOLHA DE VISUALIZAÇÃO ---
         st.subheader("👀 Verificar Decks Submetidos")
         
-        # Junta o evento atual com o histórico para criar a lista de opções
         todos_eventos = list(set([event_status["event_name"]] + past_events)) if event_status["event_name"] else past_events
         todos_eventos = sorted([e for e in todos_eventos if e.strip()])
         
         if todos_eventos:
-            # Marcador visual para distinguir o estado de cada evento na lista
             def marcador_status(ev):
                 if ev == event_status["event_name"] and event_status["is_open"]: return f"🟢 [ABERTO] {ev}"
                 elif ev == event_status["event_name"] and not event_status["is_open"]: return f"🔴 [FECHADO] {ev}"
                 else: return f"📁 [ARQUIVADO] {ev}"
             
-            # O dropdown para o Admin escolher o que quer ver (não afeta o que o público vê!)
             evento_verificar = st.selectbox("Escolher Evento para Visualizar:", todos_eventos, format_func=marcador_status)
             
             recs_admin = get_all_records_cached(evento_verificar)
             
-            # --- ZONA DE MÉTRICA E BOTÃO DE PDF ---
             col_metrica, col_pdf = st.columns([1, 1])
             with col_metrica:
                 st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
             
             with col_pdf:
                 if recs_admin:
-                    # Criamos uma chave única na memória para o PDF deste evento específico
                     pdf_key = f"pdf_pronto_{evento_verificar}"
                     
-                    # Se o PDF ainda não foi gerado, mostramos o botão para iniciar o processo
                     if pdf_key not in st.session_state:
                         if st.button("🛠️ Preparar PDF para Download", use_container_width=True):
                             with st.spinner("A extrair fotos e a gerar o PDF (pode demorar uns segundos)..."):
                                 st.session_state[pdf_key] = gerar_pdf_decks(recs_admin, evento_verificar)
-                                st.rerun() # Atualiza a interface instantaneamente para mostrar o botão de download
+                                st.rerun() 
                     
-                    # Se já foi gerado (está na memória), mostramos logo o botão de download final
                     else:
                         st.download_button(
                             label="📄 Descarregar Relatório PDF",
@@ -694,9 +658,7 @@ elif menu == "⚙️ Painel de Organização":
                             type="primary"
                         )
             st.divider()
-            # --------------------------------------
             
-            # 👇 BLOCO RESTAURADO: MOSTRAR OS DECKS ONLINE 👇
             for d in recs_admin:
                 with st.expander(f"👤 {d['Player']}"):
                     c1, c2 = st.columns([2, 1])
