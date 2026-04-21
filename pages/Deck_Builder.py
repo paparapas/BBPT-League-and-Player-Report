@@ -1,118 +1,32 @@
 import streamlit as st
 import pandas as pd
-import random
-import re
-import base64
+import json
 import os
+import re
+import difflib
+from datetime import datetime
+import logging
+import requests
+import base64
 import gspread
 from google.oauth2.service_account import Credentials
-import json
-import hashlib
+from st_keyup import st_keyup
+import tempfile
+import io
+from PIL import Image
+from fpdf import FPDF
 
 # ==========================================
-# CONFIGURAÇÃO DE PÁGINA E CSS
+# CONFIGURAÇÃO DE LOGS E PÁGINA
 # ==========================================
-st.set_page_config(page_title="BBPT Deck Builder", layout="wide")
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s [%(levelname)s] %(message)s')
 
-st.markdown("""
-<style>
-    .block-container { padding-top: 2rem !important; }
-    .part-card { text-align: center; padding: 10px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 10px; color: black;}
-    .part-card img { max-width: 100%; height: 80px; object-fit: contain; margin-bottom: 5px; }
-    .part-name { font-size: 0.8rem; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .part-category { font-size: 0.65rem; color: #666; text-transform: uppercase; }
-    
-    .light-backdrop-icon {
-        background-color: rgba(255, 255, 255, 0.85);
-        padding: 3px 6px;
-        border-radius: 6px;
-    }
-    
-    .deck-summary-box {
-        background-color: #0f111a;
-        border-radius: 12px;
-        padding: 30px;
-        margin-top: 20px;
-        color: white;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        box-shadow: 0px 8px 16px rgba(0,0,0,0.4);
-    }
-    .deck-summary-title {
-        text-align: center;
-        font-size: 32px;
-        font-weight: 900;
-        letter-spacing: 2px;
-        margin-bottom: 30px;
-        text-transform: uppercase;
-        color: #ffffff;
-    }
-    .combo-row {
-        display: flex;
-        align-items: center;
-        padding: 15px 0;
-        border-bottom: 1px solid #1f2333;
-    }
-    .combo-row:last-child {
-        border-bottom: none;
-    }
-    .combo-blade-img {
-        width: 110px;
-        height: 110px;
-        object-fit: contain;
-        margin-right: 20px;
-        filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
-    }
-    
-    .composite-blade-container {
-        position: relative;
-        width: 110px;
-        height: 110px;
-        margin-right: 20px;
-    }
-    .composite-layer {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        object-fit: contain;
-    }
-    .layer-metal { width: 110px; height: 110px; z-index: 1; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); }
-    .layer-main { width: 110px; height: 110px; z-index: 2; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); }
-    .layer-chip { width: 45px; height: 45px; z-index: 3; } 
-
-    .combo-info {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    .combo-top-line {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-    .combo-line-img {
-        height: 32px;
-        margin-right: 15px;
-        object-fit: contain;
-    }
-    .combo-bottom-line {
-        display: flex;
-        align-items: center;
-    }
-    .combo-icon {
-        height: 30px;
-        margin-right: 12px;
-    }
-    .combo-text {
-        font-size: 22px;
-        font-weight: 700;
-        color: #f1f1f1;
-    }
-</style>
-""", unsafe_allow_html=True)
+DATASET_PARTS = "Dataset_BeybladeParts.xlsx"
+DB_MASTER = "bbpt_master_db.json"
+ADMIN_PASSWORD = "bbpt-paparapas" 
 
 # ==========================================
-# LIGAÇÃO À BASE DE DADOS (GOOGLE SHEETS)
+# INTEGRAÇÃO CLOUD: GOOGLE SHEETS E IMGBB
 # ==========================================
 @st.cache_resource
 def get_gsheet_client():
@@ -125,474 +39,632 @@ def get_sheet_id():
     url = st.secrets["SHEET_URL"]
     return url.split("/d/")[1].split("/")[0] if "/d/" in url else url
 
-# ==========================================
-# CONVERSOR DE IMAGENS LOCAIS PARA BASE64
-# ==========================================
-@st.cache_data
-def get_local_image_as_base64(file_name):
-    paths_to_try = [file_name, os.path.join("..", file_name)]
-    for path in paths_to_try:
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode()
-            return f"data:image/png;base64,{encoded}"
-    return "https://via.placeholder.com/150"
-
-ICONS = {
-    "Right Spin": get_local_image_as_base64("Right-Spin_logo_Beyblade_X.png"),
-    "Left Spin": get_local_image_as_base64("Left-Spin_logo_Beyblade_X.png"),
-    "Attack": get_local_image_as_base64("Attack_logo_Beyblade_X.png"),
-    "Defense": get_local_image_as_base64("Defense_logo_Beyblade_X.png"),
-    "Stamina": get_local_image_as_base64("Stamina_logo_Beyblade_X.png"),
-    "Balance": get_local_image_as_base64("Balance_logo_Beyblade_X.png")
-}
-
-LINE_LOGOS = {
-    "Basic (BX)": get_local_image_as_base64("Basic_Line_Logo - Copy.png"),
-    "Unique (UX)": get_local_image_as_base64("Unique_Line_Logo - Copy.png"),
-    "Custom (CX)": get_local_image_as_base64("Custom_Line.png"),
-    "Expand (CXE)": get_local_image_as_base64("Expand_Infinity.png")
-}
-
-# ==========================================
-# LEITURA DO EXCEL
-# ==========================================
-DATASET_PARTS = "Dataset_BeybladeParts_Final_Images.xlsx"
-
-@st.cache_data
-def load_builder_data():
-    parts_dict = {}
-    images_dict = {}
-    bx_list = []
-    ux_list = []
-    
+# --- LEITURA COM CACHE ---
+@st.cache_data(ttl=15)
+def get_event_status_cached():
     try:
-        xls = pd.read_excel(DATASET_PARTS, sheet_name=None)
-        for sheet_name, df in xls.items():
-            clean_list = []
-            df.columns = [str(c).strip() for c in df.columns]
-            for _, row in df.iterrows():
-                name = str(row.iloc[0]).strip()
-                if pd.isna(name) or name in ['-', '', 'nan'] or "Unnamed" in name: 
-                    continue
-                clean_list.append(name)
-                if sheet_name == 'Blades BX-UX':
-                    linhagem = ""
-                    if 'Linhagem' in df.columns:
-                        linhagem = str(row['Linhagem']).strip().upper()
-                    if 'UX' in linhagem:
-                        ux_list.append(name)
-                    else:
-                        bx_list.append(name)
-                for val in row.iloc[1:]:
-                    val_str = str(val).strip()
-                    if val_str.startswith("http"):
-                        images_dict[name] = val_str
-                        break
-            parts_dict[sheet_name] = sorted(list(set(clean_list)))
-            
-        return {
-            "bx_blades": sorted(list(set(bx_list))),
-            "ux_blades": sorted(list(set(ux_list))),
-            "cx_blades": parts_dict.get('Blades CX', []),
-            "ratchets": parts_dict.get('Ratchets', []),
-            "bits": parts_dict.get('Bits', []), 
-            "assist_blades": parts_dict.get('Assist Blades', []),
-            "metal_blades": parts_dict.get('Metal Blades', []), 
-            "over_blades": parts_dict.get('Over Blades', []),
-            "lock_chips": parts_dict.get('Lock Chips', [])
-        }, images_dict
-    except Exception as e:
-        st.error(f"Erro ao carregar ficheiro Excel: {e}")
-        return {k: [] for k in ["bx_blades", "ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
+        client = get_gsheet_client()
+        sheet = client.open_by_key(get_sheet_id())
+        try: ws_cfg = sheet.worksheet("Config")
+        except gspread.exceptions.WorksheetNotFound:
+            ws_cfg = sheet.add_worksheet(title="Config", rows="2", cols="2")
+            ws_cfg.update(range_name="A1:B2", values=[["is_open", "event_name"], ["FALSE", ""]])
+        vals = ws_cfg.get_all_values()
+        if len(vals) > 1: return {"is_open": vals[1][0] == "TRUE", "event_name": vals[1][1]}
+        return {"is_open": False, "event_name": ""}
+    except: return {"is_open": False, "event_name": ""}
 
-parts, images_map = load_builder_data()
+@st.cache_data(ttl=30)
+def get_all_records_cached(event_name):
+    try:
+        client = get_gsheet_client()
+        sheet = client.open_by_key(get_sheet_id())
+        try: ws = sheet.worksheet("Página1")
+        except:
+            try: ws = sheet.worksheet("Sheet1")
+            except: ws = sheet.get_worksheet(0)
+        return [r for r in ws.get_all_records() if r.get("Event_Name") == event_name]
+    except: return []
+
+@st.cache_data(ttl=60)
+def get_past_events_list():
+    try:
+        client = get_gsheet_client()
+        sheet = client.open_by_key(get_sheet_id())
+        try: ws = sheet.worksheet("Página1")
+        except:
+            try: ws = sheet.worksheet("Sheet1")
+            except: ws = sheet.get_worksheet(0)
+        col_events = ws.col_values(2)[1:]
+        return sorted(list(set([e for e in col_events if e.strip()])))
+    except: return []
+
+# --- ESCRITA ---
+def set_event_status(is_open, event_name=""):
+    client = get_gsheet_client()
+    sheet = client.open_by_key(get_sheet_id())
+    try: ws_cfg = sheet.worksheet("Config")
+    except: ws_cfg = sheet.add_worksheet(title="Config", rows="2", cols="2")
+    status_str = "TRUE" if is_open else "FALSE"
+    ws_cfg.update(range_name="A2:B2", values=[[status_str, event_name]])
+    st.cache_data.clear()
+
+def upload_to_imgbb(image_file):
+    url = "https://api.imgbb.com/1/upload"
+    res = requests.post(url, data={"key": st.secrets["IMGBB_API_KEY"], "image": base64.b64encode(image_file.getvalue()).decode("utf-8")})
+    if res.status_code == 200: return res.json()["data"]["url"]
+    raise Exception("Erro ImgBB")
+
+def save_submission_cloud(player_name, combos, img_file, event_name):
+    img_url = upload_to_imgbb(img_file)
+    c_strs = []
+    for c in combos:
+        if c['type'] == 'Standard (BX / UX)': c_strs.append(f"{c.get('main_blade')} | {c.get('ratchet')} | {c.get('bit')}")
+        elif c['type'] == 'CX': c_strs.append(f"{c.get('lock_chip')} | {c.get('main_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
+        else: c_strs.append(f"{c.get('lock_chip')} | {c.get('metal_blade')} | {c.get('over_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
+    while len(c_strs) < 4: c_strs.append("")
+    client = get_gsheet_client()
+    sheet = client.open_by_key(get_sheet_id())
+    try: ws = sheet.worksheet("Página1")
+    except:
+        try: ws = sheet.worksheet("Sheet1")
+        except: ws = sheet.get_worksheet(0)
+    ws.append_row([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), event_name, player_name, c_strs[0], c_strs[1], c_strs[2], c_strs[3], img_url])
+    st.cache_data.clear()
 
 # ==========================================
-# GESTOR DE ESTADO E LOGIN (SIDEBAR)
+# LÓGICA DE PEÇAS E ALGORITMOS
 # ==========================================
-if "deck_size" not in st.session_state: st.session_state.deck_size = 3
-if "logged_in_user" not in st.session_state: st.session_state.logged_in_user = None
+if "num_combos" not in st.session_state: st.session_state.num_combos = 3
+if "smart_val" not in st.session_state: st.session_state.smart_val = ""
+if "keyup_key" not in st.session_state: st.session_state.keyup_key = 0
 
 for i in range(4):
-    if f"b_c_{i}_type" not in st.session_state: st.session_state[f"b_c_{i}_type"] = "Basic (BX)"
-    if f"b_c_{i}_spin" not in st.session_state: st.session_state[f"b_c_{i}_spin"] = "Right Spin"
-    if f"b_c_{i}_bt" not in st.session_state: st.session_state[f"b_c_{i}_bt"] = "Attack"
-    
-    for k in ["main_blade", "ratchet", "bit", "lock_chip", "assist_blade", "metal_blade", "over_blade"]:
-        if f"b_c_{i}_{k}" not in st.session_state:
-            st.session_state[f"b_c_{i}_{k}"] = "--"
+    for k in ["type", "main_blade", "ratchet", "bit", "lock_chip", "assist_blade", "metal_blade", "over_blade"]:
+        if f"c_{i}_{k}" not in st.session_state: st.session_state[f"c_{i}_{k}"] = "Standard (BX / UX)" if k == "type" else "--"
 
-# --- INTERFACE DE LOGIN E GESTÃO NA BARRA LATERAL ---
-st.sidebar.title("🔐 Área Pessoal")
+@st.cache_data
+def load_parts():
+    try:
+        xls = pd.read_excel(DATASET_PARTS, sheet_name=None)
+        alias_map = {}
+        def get_clean_list(sheet_name):
+            if sheet_name not in xls: return []
+            df = xls[sheet_name]
+            if sheet_name == 'Bits' and len(df.columns) > 1:
+                main_vals = []
+                if "Unnamed" not in str(df.columns[0]): main_vals.append(str(df.columns[0]))
+                main_vals.extend(df.iloc[:, 0].tolist())
+                for _, row in df.iterrows():
+                    main_p = str(row.iloc[0]).strip()
+                    if pd.isna(main_p) or main_p in ['-', '', 'nan']: continue
+                    for val in row.iloc[1:]:
+                        if pd.notna(val):
+                            for sub in str(val).split(','):
+                                if sub.strip(): alias_map[sub.strip().lower()] = main_p
+                return sorted(list(set([str(x).strip() for x in main_vals if pd.notna(x) and str(x).strip() not in ['-', '', 'nan']])))
+            all_v = [col for col in df.columns if "Unnamed" not in str(col)] + df.values.flatten().tolist()
+            return sorted(list(set([str(x).strip() for x in all_v if pd.notna(x) and str(x).strip() not in ['-', '', 'nan']])))
+        return {
+            "bx_ux_blades": get_clean_list('Blades BX-UX'), 
+            "cx_blades": get_clean_list('Blades CX'),       
+            "ratchets": get_clean_list('Ratchets'),
+            "bits": get_clean_list('Bits'), 
+            "assist_blades": get_clean_list('Assist Blades'),
+            "metal_blades": get_clean_list('Metal Blades'), 
+            "over_blades": get_clean_list('Over Blades'),
+            "lock_chips": get_clean_list('Lock Chips')
+        }, alias_map
+    except: return {k: [] for k in ["bx_ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
 
-if st.session_state.logged_in_user is None:
-    with st.sidebar.form("login_form"):
-        st.write("Acede aos teus Decks Gravados:")
-        user_input = st.text_input("Blader (Nome):")
-        pass_input = st.text_input("Password:", type="password")
-        if st.form_submit_button("Entrar"):
-            pass_hash = hashlib.md5(pass_input.encode()).hexdigest()
-            try:
-                client = get_gsheet_client()
-                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
-                records = sheet_contas.get_all_records()
-                user_found = False
-                for row in records:
-                    if str(row["Nome"]).strip().lower() == user_input.strip().lower():
-                        user_found = True
-                        if str(row["Password"]).strip() == pass_hash:
-                            st.session_state.logged_in_user = row["Nome"]
-                            st.rerun()
-                        else: st.error("❌ Password incorreta!")
-                if not user_found: st.error("❌ Utilizador não encontrado.")
-            except: st.error("⚠️ Erro de ligação à BD.")
-else:
-    st.sidebar.success(f"Bem-vindo, {st.session_state.logged_in_user}!")
-    if st.sidebar.button("Sair"):
-        st.session_state.logged_in_user = None
-        st.rerun()
+@st.cache_data(ttl=300)
+def get_dynamic_player_list():
+    jogadores_oficiais = []
+    try:
+        import json
+        with open(DB_MASTER, "r", encoding="utf-8") as f:
+            db = json.load(f)
+            perfis = db.get("global_versus", {}).get("profiles", {})
+            jogadores_oficiais = list(perfis.keys())
+    except: pass
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🗄️ Meus Decks")
-    
-    # --- NOVO: CAMPO PARA NOME DO DECK ---
-    if "current_deck_name" not in st.session_state: st.session_state.current_deck_name = ""
-    
-    deck_name_input = st.sidebar.text_input("Nome do Deck:", value=st.session_state.current_deck_name, placeholder="Ex: Deck Stamina")
-    slot_choice = st.sidebar.selectbox("Escolher Slot:", ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"])
-    
-    col_save, col_load = st.sidebar.columns(2)
-    
-    if col_save.button("💾 Gravar", use_container_width=True, type="primary"):
-        # Guardamos o nome no JSON
-        deck_to_save = {
-            "deck_name": deck_name_input if deck_name_input else slot_choice,
-            "size": st.session_state.deck_size, 
-            "combos": []
-        }
-        for i in range(st.session_state.deck_size):
-            combo = {
-                "type": st.session_state[f"b_c_{i}_type"],
-                "spin": st.session_state.get(f"b_c_{i}_spin", "Right Spin"),
-                "bt": st.session_state.get(f"b_c_{i}_bt", "Attack"),
-                "main_blade": st.session_state.get(f"b_c_{i}_main_blade", "--"),
-                "ratchet": st.session_state.get(f"b_c_{i}_ratchet", "--"),
-                "bit": st.session_state.get(f"b_c_{i}_bit", "--"),
-                "lock_chip": st.session_state.get(f"b_c_{i}_lock_chip", "--"),
-                "assist_blade": st.session_state.get(f"b_c_{i}_assist_blade", "--"),
-                "metal_blade": st.session_state.get(f"b_c_{i}_metal_blade", "--"),
-                "over_blade": st.session_state.get(f"b_c_{i}_over_blade", "--")
-            }
-            deck_to_save["combos"].append(combo)
-        
-        json_string = json.dumps(deck_to_save)
-        with st.spinner("A gravar..."):
-            try:
-                client = get_gsheet_client()
-                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
-                cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
-                col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
-                sheet_contas.update_cell(cell.row, col_index, json_string)
-                st.session_state.current_deck_name = deck_name_input # Guarda na memória
-                st.sidebar.success(f"Gravado!")
-            except: st.sidebar.error("Erro!")
+    jogadores_novos = []
+    try:
+        cliente_google = get_gsheet_client()
+        sheet_jogadores = cliente_google.open_by_key(get_sheet_id()).worksheet("Jogadores")
+        jogadores_novos = sheet_jogadores.col_values(1)[1:] 
+    except: pass
 
-    if col_load.button("📥 Carregar", use_container_width=True):
-        with st.spinner("A carregar..."):
-            try:
-                client = get_gsheet_client()
-                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
-                cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
-                col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
-                raw_data = sheet_contas.cell(cell.row, col_index).value
+    todos = list(set(jogadores_oficiais + jogadores_novos))
+    return sorted([j.strip() for j in todos if j and j.strip() != ""])
+
+def load_players():
+    players = ["-- Selecionar Jogador --", "Outro (Novo Jogador)"]
+    if os.path.exists(DB_MASTER):
+        try:
+            with open(DB_MASTER, 'r', encoding='utf-8') as f:
+                players = ["-- Selecionar Jogador --"] + sorted(list(json.load(f)['global_versus']['profiles'].keys())) + ["Outro (Novo Jogador)"]
+        except: pass
+    return players
+
+def parse_smart_combo(text, parts_dict, alias_map):
+    parsed = {"type": "Standard (BX / UX)", "main_blade": "--", "over_blade": "--", "metal_blade": "--", "assist_blade": "--", "lock_chip": "--", "ratchet": "--", "bit": "--"}
+    words = text.split()
+    words_cl = [re.sub(r'[^a-zA-Z0-9]', '', w).lower() for w in words]
+    text_cl = "".join(words_cl)
+    
+    temp_dict = parts_dict.copy()
+    temp_dict["all_main_blades"] = parts_dict.get("bx_ux_blades", []) + parts_dict.get("cx_blades", [])
+    
+    cats = [("over_blades", "over_blade"), ("metal_blades", "metal_blade"), ("all_main_blades", "main_blade"), ("assist_blades", "assist_blade"), ("ratchets", "ratchet"), ("bits", "bit"), ("lock_chips", "lock_chip")]
+    
+    for cat, key in cats:
+        best, r_max = "--", 0
+        if cat == "bits":
+            for al, mp in sorted(alias_map.items(), key=lambda x: len(x[0]), reverse=True):
+                if re.sub(r'[^a-zA-Z0-9]', '', al).lower() in words_cl:
+                    best = mp; break
+            if best != "--": parsed[key] = best; continue
+            
+        for p in sorted(temp_dict.get(cat, []), key=len, reverse=True):
+            p_cl = re.sub(r'[^a-zA-Z0-9]', '', p).lower()
+            if p_cl and p_cl in text_cl: 
+                best = p; break 
                 
-                if raw_data and raw_data.startswith("{"):
-                    loaded_deck = json.loads(raw_data)
-                    # Recupera o nome do deck ao carregar
-                    st.session_state.current_deck_name = loaded_deck.get("deck_name", "")
-                    st.session_state.deck_size = loaded_deck.get("size", 3)
-                    for i, c in enumerate(loaded_deck["combos"]):
-                        # ... (O resto do carregamento que já tinhas)
-                        st.session_state[f"b_c_{i}_type"] = c.get("type", "Basic (BX)")
-                        # ... etc
-                    st.rerun()
-            except: st.sidebar.error("Erro!")
+            p_words = re.sub(r'[^a-zA-Z0-9\s]', '', p).lower().split()
+            if not p_words: continue
+            
+            match_score = 0
+            for pw in p_words:
+                best_w_score = 0
+                for w in words_cl:
+                    score = difflib.SequenceMatcher(None, pw, w).ratio()
+                    if score > best_w_score: best_w_score = score
+                match_score += best_w_score
+                
+            avg_score = match_score / len(p_words)
+            if avg_score > 0.85 and avg_score > r_max:
+                r_max = avg_score; best = p
+                
+        parsed[key] = best
 
-
-# ==========================================
-# RANDOMIZER E UTILIDADES
-# ==========================================
-def clear_deck():
-    for i in range(4):
-        st.session_state[f"b_c_{i}_type"] = "Basic (BX)"
-        st.session_state[f"b_c_{i}_spin"] = "Right Spin"
-        st.session_state[f"b_c_{i}_bt"] = "Attack"
-        for k in ["main_blade", "ratchet", "bit", "lock_chip", "assist_blade", "metal_blade", "over_blade"]:
-            st.session_state[f"b_c_{i}_{k}"] = "--"
-
-def randomize_deck():
-    st.session_state.deck_size = 3
-    used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
-    types = ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"]
-    spins = ["Right Spin", "Left Spin"]
-    b_types = ["Attack", "Defense", "Stamina", "Balance"]
+    if parsed["over_blade"] != "--" or parsed["metal_blade"] != "--": 
+        parsed["type"] = "CX Expanded"
+    elif parsed["assist_blade"] != "--" or parsed["main_blade"] in parts_dict.get("cx_blades", []): 
+        parsed["type"] = "CX" 
+    else: 
+        parsed["type"] = "Standard (BX / UX)"
     
-    def pick_unique(pool, used_set):
-        available = [p for p in pool if p not in used_set]
-        if not available: return "--"
-        choice = random.choice(available)
-        used_set.add(re.sub(r'\s*\(.*?\)\s*', '', choice).strip().lower())
-        return choice
-
-    for i in range(st.session_state.deck_size):
-        ctype = random.choice(types)
-        st.session_state[f"b_c_{i}_type"] = ctype
-        st.session_state[f"b_c_{i}_spin"] = random.choice(spins)
-        st.session_state[f"b_c_{i}_bt"] = random.choice(b_types)
-        for k in ["main_blade", "ratchet", "bit", "lock_chip", "assist_blade", "metal_blade", "over_blade"]:
-            st.session_state[f"b_c_{i}_{k}"] = "--"
-            
-        if ctype == "Basic (BX)":
-            st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts["bx_blades"], used_blades)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
-            st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
-        elif ctype == "Unique (UX)":
-            st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts["ux_blades"], used_blades)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
-            st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
-        elif ctype == "Custom (CX)":
-            st.session_state[f"b_c_{i}_lock_chip"] = pick_unique(parts["lock_chips"], used_chips)
-            st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts["cx_blades"], used_blades)
-            st.session_state[f"b_c_{i}_assist_blade"] = pick_unique(parts["assist_blades"], used_assist)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
-            st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
-        else:
-            st.session_state[f"b_c_{i}_lock_chip"] = pick_unique(parts["lock_chips"], used_chips)
-            st.session_state[f"b_c_{i}_metal_blade"] = pick_unique(parts["metal_blades"], used_metal)
-            st.session_state[f"b_c_{i}_over_blade"] = pick_unique(parts["over_blades"], used_blades)
-            st.session_state[f"b_c_{i}_assist_blade"] = pick_unique(parts["assist_blades"], used_assist)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
-            st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
-
-# ==========================================
-# TÍTULO E INTERFACE PRINCIPAL
-# ==========================================
-st.title("🛠️ Custom Deck Builder")
-st.markdown("Constrói, testa e exporta os teus decks. Validação automática de regras BBPT ativada.")
-
-col_size, col_clear, col_rand = st.columns([2, 1, 1])
-with col_size:
-    st.radio("Tamanho do Deck:", options=[3, 4], horizontal=True, key="deck_size")
-with col_clear:
-    st.button("🧹 Limpar Deck", use_container_width=True, on_click=clear_deck)
-with col_rand:
-    st.button("🎲 Gerar Aleatório", use_container_width=True, on_click=randomize_deck)
-
-st.divider()
-
-def render_part_card(part_name, category):
-    if part_name == "--":
-        st.markdown(f'<div class="part-card" style="opacity: 0.4;"><div style="height: 80px; display: flex; align-items: center; justify-content: center; color: #999;">?</div><div class="part-category">{category}</div><div class="part-name">---</div></div>', unsafe_allow_html=True)
-        return
-    img_url = images_map.get(part_name, "https://via.placeholder.com/150?text=No+Image")
-    st.markdown(f'<div class="part-card"><img src="{img_url}" alt="{part_name}" referrerpolicy="no-referrer"><div class="part-category">{category}</div><div class="part-name" title="{part_name}">{part_name}</div></div>', unsafe_allow_html=True)
-
-# ==========================================
-# CONSTRUTOR DE COMBOS
-# ==========================================
-for i in range(st.session_state.deck_size):
-    with st.container(border=True):
-        c_title, c_type, c_spin, c_bt = st.columns([1.2, 2, 1, 1])
-        with c_title:
-            st.markdown(f"#### 🌀 Combo {i+1}")
-        with c_type:
-            ct = st.selectbox("Linha", ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"], key=f"b_c_{i}_type", label_visibility="collapsed")
-            if ct == "Expand (CXE)":
-                st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
-        with c_spin:
-            sp = st.selectbox("Rotação", ["Right Spin", "Left Spin"], key=f"b_c_{i}_spin", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
-        with c_bt:
-            bt = st.selectbox("Tipo", ["Attack", "Defense", "Stamina", "Balance"], key=f"b_c_{i}_bt", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
-            
-        st.write("") 
+    if parsed["type"] in ["CX", "CX Expanded"] and parsed["lock_chip"] == "--" and words:
+        parsed["lock_chip"] = words[0].capitalize()
         
-        if ct in ["Basic (BX)", "Unique (UX)"]:
-            blade_list = parts["bx_blades"] if ct == "Basic (BX)" else parts["ux_blades"]
-            c1, c2, c3 = st.columns([2, 1, 1])
-            c1.selectbox("Blade", ["--"]+blade_list, key=f"b_c_{i}_main_blade")
-            c2.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"b_c_{i}_ratchet")
-            c3.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
-            g1, g2, g3 = st.columns(3)
-            with g1: render_part_card(st.session_state[f"b_c_{i}_main_blade"], "Blade")
-            with g2: render_part_card(st.session_state[f"b_c_{i}_ratchet"], "Ratchet")
-            with g3: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
-            
-        elif ct == "Custom (CX)":
-            c1, c2, c3, c4, c5 = st.columns([1.5, 2, 2, 1.2, 1.2])
-            c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"b_c_{i}_lock_chip")
-            c2.selectbox("Main", ["--"]+parts["cx_blades"], key=f"b_c_{i}_main_blade")
-            c3.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"b_c_{i}_assist_blade")
-            c4.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"b_c_{i}_ratchet")
-            c5.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
-            g1, g2, g3, g4, g5 = st.columns(5)
-            with g1: render_part_card(st.session_state[f"b_c_{i}_lock_chip"], "Lock Chip")
-            with g2: render_part_card(st.session_state[f"b_c_{i}_main_blade"], "Main Blade")
-            with g3: render_part_card(st.session_state[f"b_c_{i}_assist_blade"], "Assist Blade")
-            with g4: render_part_card(st.session_state[f"b_c_{i}_ratchet"], "Ratchet")
-            with g5: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
-            
-        else: # Expand (CXE)
-            c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2, 2, 2, 1.2, 1.2])
-            c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"b_c_{i}_lock_chip")
-            c2.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"b_c_{i}_metal_blade")
-            c3.selectbox("Over", ["--"]+parts["over_blades"], key=f"b_c_{i}_over_blade")
-            c4.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"b_c_{i}_assist_blade")
-            c5.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"b_c_{i}_ratchet")
-            c6.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
-            g1, g2, g3, g4, g5, g6 = st.columns(6)
-            with g1: render_part_card(st.session_state[f"b_c_{i}_lock_chip"], "Lock Chip")
-            with g2: render_part_card(st.session_state[f"b_c_{i}_metal_blade"], "Metal Blade")
-            with g3: render_part_card(st.session_state[f"b_c_{i}_over_blade"], "Over Blade")
-            with g4: render_part_card(st.session_state[f"b_c_{i}_assist_blade"], "Assist Blade")
-            with g5: render_part_card(st.session_state[f"b_c_{i}_ratchet"], "Ratchet")
-            with g6: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
+    return parsed
 
-st.divider()
+def apply_smart_combo(slot, data):
+    st.session_state[f"c_{slot}_type"] = data.get("type")
+    for k in ["lock_chip", "main_blade", "over_blade", "metal_blade", "assist_blade", "ratchet", "bit"]: st.session_state[f"c_{slot}_{k}"] = data.get(k, "--")
+    if 'smart_match' in st.session_state: del st.session_state.smart_match
+    st.session_state.smart_val = ""
+    st.session_state.keyup_key += 1
 
-has_duplicates = False
-dup_error_msg = ""
-missing_parts = False
+def cancel_smart_combo():
+    if 'smart_match' in st.session_state: del st.session_state.smart_match
+    st.session_state.smart_val = ""
+    st.session_state.keyup_key += 1
 
-used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
-deck_text_export = "🛡️ **O Meu Deck BBPT**\n"
-combo_data_for_visual = []
+def append_suggestion(sug_text):
+    words = st.session_state.smart_val.split()
+    if words:
+        words[-1] = sug_text
+        st.session_state.smart_val = " ".join(words) + " "
+        st.session_state.keyup_key += 1
 
-for i in range(st.session_state.deck_size):
-    ct = st.session_state[f"b_c_{i}_type"]
-    sp = st.session_state[f"b_c_{i}_spin"]
-    bt = st.session_state[f"b_c_{i}_bt"]
+@st.cache_data(ttl=120)
+def gerar_pdf_decks(records, event_name):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
     
-    ks = ["main_blade", "ratchet", "bit"] if ct in ["Basic (BX)", "Unique (UX)"] else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "Custom (CX)" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
-    
-    combo_str_parts = []
-    for k in ks:
-        v = st.session_state[f"b_c_{i}_{k}"]
-        combo_str_parts.append(v)
-        if v == "--": missing_parts = True
+    for d in records:
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        player_name = str(d['Player']).encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(0, 10, f"Blader: {player_name}", ln=True, align='C')
+        pdf.ln(5)
         
-    deck_text_export += f"🔹 **Combo {i+1}:** [{sp}] [{bt}] {' | '.join(combo_str_parts)}\n"
-
-    if not missing_parts and not has_duplicates:
-        b = st.session_state[f"b_c_{i}_over_blade"] if "Expand" in ct else st.session_state.get(f"b_c_{i}_main_blade", "--")
-        if b != '--':
-            base = re.sub(r'\s*\(.*?\)\s*', '', str(b)).strip().lower()
-            if base in used_blades: has_duplicates = True; dup_error_msg = f"A Blade '{b}' está repetida!"
-            used_blades.add(base)
-        r = st.session_state.get(f"b_c_{i}_ratchet", '--')
-        if r != '--':
-            if r in used_ratchets: has_duplicates = True; dup_error_msg = f"A Ratchet '{r}' está repetida!"
-            used_ratchets.add(r)
-        bt_val = st.session_state.get(f"b_c_{i}_bit", '--')
-        if bt_val != '--':
-            if bt_val in used_bits: has_duplicates = True; dup_error_msg = f"A Bit '{bt_val}' está repetida!"
-            used_bits.add(bt_val)
-        a = st.session_state.get(f"b_c_{i}_assist_blade", '--')
-        if a != '--':
-            if a in used_assist: has_duplicates = True; dup_error_msg = f"A Assist Blade '{a}' está repetida!"
-            used_assist.add(a)
-        m = st.session_state.get(f"b_c_{i}_metal_blade", '--')
-        if m != '--':
-            if m in used_metal: has_duplicates = True; dup_error_msg = f"A Metal Blade '{m}' está repetida!"
-            used_metal.add(m)
-        c = st.session_state.get(f"b_c_{i}_lock_chip", '--')
-        if c != '--':
-            c_low = c.strip().lower()
-            if c_low in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{c}' está repetido!"
-            used_chips.add(c_low)
-
-        img_html = ""
-        if ct in ["Basic (BX)", "Unique (UX)"]:
-            hero_blade = st.session_state[f"b_c_{i}_main_blade"]
-            url_blade = images_map.get(hero_blade, "https://via.placeholder.com/150")
-            img_html = f'<img class="combo-blade-img" src="{url_blade}" alt="Blade" referrerpolicy="no-referrer">'
-        elif ct == "Custom (CX)":
-            m_blade = st.session_state[f"b_c_{i}_main_blade"]
-            l_chip = st.session_state[f"b_c_{i}_lock_chip"]
-            url_main = images_map.get(m_blade, "https://via.placeholder.com/150")
-            url_chip = images_map.get(l_chip, "https://via.placeholder.com/150")
-            img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-main" src="{url_main}" alt="Main" referrerpolicy="no-referrer"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip" referrerpolicy="no-referrer"></div>'
-        else: # Expand (CXE)
-            o_blade = st.session_state[f"b_c_{i}_over_blade"]
-            mt_blade = st.session_state[f"b_c_{i}_metal_blade"]
-            l_chip = st.session_state[f"b_c_{i}_lock_chip"]
-            url_over = images_map.get(o_blade, "https://via.placeholder.com/150")
-            url_metal = images_map.get(mt_blade, "https://via.placeholder.com/150")
-            url_chip = images_map.get(l_chip, "https://via.placeholder.com/150")
-            img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-metal" src="{url_metal}" alt="Metal" referrerpolicy="no-referrer"><img class="composite-layer layer-main" src="{url_over}" alt="Over" referrerpolicy="no-referrer"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip" referrerpolicy="no-referrer"></div>'
-
-        logos_html = ""
-        if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic">'
-        if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique">'
-        if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom">'
-        if "Expand" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
-
-        combo_data_for_visual.append({
-            "image_html": img_html,
-            "logos_html": logos_html,
-            "spin": ICONS[sp],
-            "type": ICONS[bt],
-            "name": " ".join(combo_str_parts).replace("--", "")
-        })
-
-col_status, col_export = st.columns([2, 1])
-
-with col_status:
-    if missing_parts:
-        st.warning("⚠️ O Deck está incompleto. Seleciona todas as peças para validar.")
-    elif has_duplicates:
-        st.error(f"❌ **Deck Ilegal:** {dup_error_msg}")
-    else:
-        st.success("✅ **Deck Legal e Válido para Torneios!**")
-
-with col_export:
-    st.info("Copia o texto abaixo ou tira um Print Screen do Cartão Visual!")
-    st.code(deck_text_export, language="markdown")
-
-    if not missing_parts and not has_duplicates:
-        # --- TÍTULO DINÂMICO ---
-        # Se o deck tiver nome no session_state, usa-o. Se não, usa "DECK SUMMARY"
-        display_title = st.session_state.current_deck_name.upper() if st.session_state.get("current_deck_name") else "DECK SUMMARY"
+        pdf.set_font("Arial", size=12)
+        for i in range(1, 5):
+            combo = d.get(f'Combo_{i}')
+            if combo:
+                combo_safe = str(combo).encode('latin-1', 'replace').decode('latin-1')
+                pdf.cell(0, 8, f"Combo {i}: {combo_safe}", ln=True)
+        pdf.ln(10)
         
-        html_rows = ""
-        for c in combo_data_for_visual:
-            # Aqui montamos a estrutura completa de cada linha do sumário
-            html_rows += f"""
-            <div class="combo-row">
-                {c['image_html']}
-                <div class="combo-info">
-                    <div class="combo-top-line">
-                        {c['logos_html']}
-                        <img class="combo-icon light-backdrop-icon" src="{c['spin']}" alt="Spin" referrerpolicy="no-referrer">
-                    </div>
-                    <div class="combo-bottom-line">
-                        <img class="combo-icon" src="{c['type']}" alt="Type" referrerpolicy="no-referrer">
-                        <span class="combo-text">{c['name']}</span>
-                    </div>
-                </div>
-            </div>
-            """
-        
-        # Montagem final do cartão preto
-        visual_report_html = f"""
-        <div class="deck-summary-box">
-            <div class="deck-summary-title">{display_title}</div>
-            {html_rows}
+        img_url = d.get('Image_URL')
+        if img_url:
+            try:
+                res = requests.get(img_url, timeout=10)
+                if res.status_code == 200:
+                    img = Image.open(io.BytesIO(res.content))
+                    img.thumbnail((600, 600))
+                    
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        img.save(tmp_file, format="JPEG")
+                        tmp_path = tmp_file.name
+                    
+                    pdf.image(tmp_path, x=45, w=120)
+                    os.remove(tmp_path)
+            except:
+                pdf.set_font("Arial", 'I', 10)
+                pdf.cell(0, 10, "[Erro ao descarregar e processar a fotografia deste deck]", ln=True, align='C')
+                
+    saida = pdf.output(dest='S')
+    if type(saida) is str:
+        return saida.encode('latin1')
+    return bytes(saida)
+
+# ==========================================
+# INTERFACE
+# ==========================================
+logo_path = "logo.png" if os.path.exists("logo.png") else "../logo.png"
+has_logo = os.path.exists(logo_path)
+
+if has_logo:
+    with open(logo_path, "rb") as image_file:
+        encoded_logo = base64.b64encode(image_file.read()).decode()
+
+if has_logo:
+    st.sidebar.markdown(
+        f"""
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <img src="data:image/png;base64,{encoded_logo}" width="35" style="margin-right: 10px;">
+            <h1 style="margin: 0; padding: 0; font-size: 1.8rem;">BBPT App</h1>
         </div>
-        """
+        """, 
+        unsafe_allow_html=True
+    )
+else:
+    st.sidebar.title("🛡️ BBPT App")
+
+menu = st.sidebar.radio("Navegação:", ["📝 Formulário Público", "⚙️ Painel de Organização"])
+event_status = get_event_status_cached()
+
+if menu == "📝 Formulário Público":
+    st.title("📝 BBPT League - Deck Check")
+    
+    if not event_status["is_open"]:
+        st.warning("🔒 Check-in Fechado.")
+        st.stop()
+    
+    st.info(f"🏆 **A submeter para o evento:** {event_status['event_name']}")
+    
+    recs_list = get_all_records_cached(event_status["event_name"])
+    st.metric("Decks Submetidos", len(recs_list))
+    
+    parts, alias_map = load_parts()
+    player_list = load_players()
+    
+    all_available_parts = []
+    for cat_parts in parts.values(): all_available_parts.extend(cat_parts)
+    all_available_parts = list(set(all_available_parts))
+
+    lista_dinamica = get_dynamic_player_list()
+    opcoes_blader = ["-- Selecionar --"] + lista_dinamica + ["Outro (Novo Jogador)"]
+
+    with st.container(border=True):
+        c_id1, c_id2 = st.columns([1, 2])
+        selected_player = c_id1.selectbox("Blader:", opcoes_blader)
+        custom_player = c_id2.text_input("Novo Blader:") if selected_player == "Outro (Novo Jogador)" else ""
         
-        st.markdown(visual_report_html, unsafe_allow_html=True)
+        # 👇 BLOCO MÁGICO DE IMPORTAÇÃO E TRADUÇÃO 👇
+        if selected_player not in ["-- Selecionar --", "Outro (Novo Jogador)"]:
+            try:
+                client = get_gsheet_client()
+                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
+                
+                try:
+                    cell = sheet_contas.find(selected_player, in_column=1)
+                    valores = sheet_contas.row_values(cell.row)
+                    
+                    slots_disponiveis = {}
+                    for idx, slot_name in enumerate(["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"]):
+                        col_idx = idx + 2
+                        if col_idx < len(valores) and valores[col_idx].strip().startswith("{"):
+                            slots_disponiveis[slot_name] = valores[col_idx]
+                    
+                    if slots_disponiveis:
+                        st.markdown("---")
+                        st.info("💡 Este jogador tem decks gravados. Podes importá-los diretamente!")
+                        c_load1, c_load2 = st.columns([2, 1])
+                        deck_escolhido = c_load1.selectbox("Carregar Deck Gravado:", ["-- Escolher --"] + list(slots_disponiveis.keys()))
+                        
+                        if c_load2.button("📥 Importar Deck", use_container_width=True):
+                            if deck_escolhido != "-- Escolher --":
+                                dados_deck = json.loads(slots_disponiveis[deck_escolhido])
+                                st.session_state.num_combos = dados_deck["size"]
+                                
+                                for i, c in enumerate(dados_deck["combos"]):
+                                    tipo_builder = c.get("type", "Basic (BX)")
+                                    if tipo_builder in ["Basic (BX)", "Unique (UX)"]: 
+                                        tipo_check = "Standard (BX / UX)"
+                                    elif tipo_builder == "Custom (CX)": 
+                                        tipo_check = "CX"
+                                    else: 
+                                        tipo_check = "CX Expanded"
+                                        
+                                    st.session_state[f"c_{i}_type"] = tipo_check
+                                    st.session_state[f"c_{i}_main_blade"] = c.get("main_blade", "--")
+                                    st.session_state[f"c_{i}_ratchet"] = c.get("ratchet", "--")
+                                    st.session_state[f"c_{i}_bit"] = c.get("bit", "--")
+                                    st.session_state[f"c_{i}_lock_chip"] = c.get("lock_chip", "--")
+                                    st.session_state[f"c_{i}_assist_blade"] = c.get("assist_blade", "--")
+                                    st.session_state[f"c_{i}_metal_blade"] = c.get("metal_blade", "--")
+                                    st.session_state[f"c_{i}_over_blade"] = c.get("over_blade", "--")
+                                st.rerun() 
+                except gspread.exceptions.CellNotFound:
+                    pass 
+            except Exception as e:
+                pass
+        # 👆 FIM DO BLOCO MÁGICO 👆
+        
+    with st.container(border=True):
+        st.subheader("⚡ Quick Add (Autocomplete Ativo)")
+        c1, c2 = st.columns([3, 1])
+        
+        with c1:
+            current_text = st_keyup("Escreve ou cola o teu combo:", value=st.session_state.smart_val, key=f"sk_{st.session_state.keyup_key}", placeholder="Ex: Flat 1-60 Dran Buster")
+            if current_text is not None: st.session_state.smart_val = current_text
+            
+            if st.session_state.smart_val and not st.session_state.smart_val.endswith(" "):
+                last_word = st.session_state.smart_val.split()[-1]
+                if len(last_word) >= 2:
+                    sugestoes = [p for p in all_available_parts if last_word.lower() in p.lower() and p.lower() != last_word.lower()][:5]
+                    if sugestoes:
+                        st.caption("✨ Sugestões (clica para completar):")
+                        cols = st.columns(len(sugestoes))
+                        for idx, s in enumerate(sugestoes): cols[idx].button(s, key=f"btn_{s}_{idx}", on_click=append_suggestion, args=(s,))
+
+        if c2.button("Analisar 🔍", use_container_width=True):
+            if st.session_state.smart_val.strip(): st.session_state.smart_match = parse_smart_combo(st.session_state.smart_val, parts, alias_map)
+                
+        if "smart_match" in st.session_state:
+            m = st.session_state.smart_match
+            if m["type"] == "Standard (BX / UX)":
+                display_text = f"{m.get('main_blade')} | {m.get('ratchet')} | {m.get('bit')}"
+            elif m["type"] == "CX":
+                display_text = f"{m.get('lock_chip')} | {m.get('main_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
+            else: 
+                display_text = f"{m.get('lock_chip')} | {m.get('metal_blade')} | {m.get('over_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
+                
+            st.info(f"🧩 Detetado ({m['type']}): {display_text}")
+            
+            idx = st.selectbox("Slot:", [f"Combo {i+1}" for i in range(st.session_state.num_combos)])
+            idx_n = int(idx.split(" ")[1]) - 1
+            cb1, cb2 = st.columns(2)
+            cb1.button("Aplicar", on_click=apply_smart_combo, args=(idx_n, m))
+            cb2.button("Cancelar", on_click=cancel_smart_combo)
+            
+    st.radio("Nº Beyblades:", options=[3, 4], horizontal=True, key="num_combos")
+    for i in range(st.session_state.num_combos):
+        with st.container(border=True):
+            t1, t2 = st.columns([1, 3]); t1.markdown(f"#### Combo {i+1}")
+            ct = t2.selectbox("Tipo", ["Standard (BX / UX)", "CX", "CX Expanded"], key=f"c_{i}_type", label_visibility="collapsed")
+            
+            if ct == "Standard (BX / UX)":
+                c1, c2, c3 = st.columns([2, 1, 1])
+                c1.selectbox("Blade", ["--"]+parts["bx_ux_blades"], key=f"c_{i}_main_blade")
+                c2.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
+                c3.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
+            elif ct == "CX":
+                c1, c2, c3, c4, c5 = st.columns([1.5, 2, 2, 1.2, 1.2])
+                if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
+                else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
+                c2.selectbox("Main", ["--"]+parts["cx_blades"], key=f"c_{i}_main_blade")
+                c3.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
+                c4.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
+                c5.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
+            else:
+                c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2, 2, 2, 1.2, 1.2])
+                if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
+                else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
+                c2.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"c_{i}_metal_blade")
+                c3.selectbox("Over", ["--"]+parts["over_blades"], key=f"c_{i}_over_blade")
+                c4.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
+                c5.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
+                c6.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
+                
+    with st.container(border=True):
+        up = st.file_uploader("Foto:", type=['png', 'jpg', 'jpeg'])
+        if up: st.image(up, width=300)
+        
+    if st.button("Submeter Deck 🚀", use_container_width=True, type="primary"):
+        name = custom_player if selected_player == "Outro (Novo Jogador)" else selected_player
+        combos, missing_parts = [], False
+        
+        has_duplicates = False
+        dup_error_msg = ""
+        used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
+        
+        for i in range(st.session_state.num_combos):
+            ct = st.session_state[f"c_{i}_type"]; cd = {"type": ct, "combo_number": i+1}
+            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
+            
+            for k in ks:
+                v = st.session_state.get(f"c_{i}_{k}", "--")
+                cd[k] = v
+                if v == "--" or not str(v).strip(): missing_parts = True
+            combos.append(cd)
+
+            if not missing_parts and not has_duplicates:
+                b = cd.get('over_blade', cd.get('main_blade', '--'))
+                if b != '--':
+                    base = re.sub(r'\s*\(.*?\)\s*', '', str(b)).strip().lower()
+                    if base in used_blades: has_duplicates = True; dup_error_msg = f"A Blade '{b}' (ou remake) está repetida!"
+                    used_blades.add(base)
+                    
+                r = cd.get('ratchet', '--')
+                if r != '--':
+                    if r in used_ratchets: has_duplicates = True; dup_error_msg = f"A Ratchet '{r}' está repetida!"
+                    used_ratchets.add(r)
+                    
+                bt = cd.get('bit', '--')
+                if bt != '--':
+                    if bt in used_bits: has_duplicates = True; dup_error_msg = f"A Bit '{bt}' está repetida!"
+                    used_bits.add(bt)
+                    
+                if 'assist_blade' in cd and cd['assist_blade'] != '--':
+                    if cd['assist_blade'] in used_assist: has_duplicates = True; dup_error_msg = f"A Assist Blade '{cd['assist_blade']}' está repetida!"
+                    used_assist.add(cd['assist_blade'])
+
+                if 'metal_blade' in cd and cd['metal_blade'] != '--':
+                    if cd['metal_blade'] in used_metal: has_duplicates = True; dup_error_msg = f"A Metal Blade '{cd['metal_blade']}' está repetida!"
+                    used_metal.add(cd['metal_blade'])
+
+                if 'lock_chip' in cd and cd['lock_chip'] != '--' and cd['lock_chip'].strip() != '':
+                    chip = cd['lock_chip'].strip().lower()
+                    if chip in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{cd['lock_chip']}' está repetido!"
+                    used_chips.add(chip)
+
+        if name == "-- Selecionar --" or not name.strip(): st.error("⚠️ Por favor, identifica-te.")
+        elif missing_parts: st.error("⚠️ Faltam peças! Preenche todas as opções do teu deck.")
+        elif has_duplicates: st.error(f"⚠️ **Regra de Deck Check:** {dup_error_msg}")
+        elif not up: st.error("⚠️ Faltou anexar a prova fotográfica do deck!")
+        else:
+            with st.spinner("A gravar submissão..."):
+                save_submission_cloud(name, combos, up, event_status["event_name"])
+                
+                if selected_player == "Outro (Novo Jogador)" and custom_player.strip() != "":
+                    try:
+                        client_g = get_gsheet_client()
+                        sheet_jogadores = client_g.open_by_key(get_sheet_id()).worksheet("Jogadores")
+                        nomes_existentes = sheet_jogadores.col_values(1)
+                        if custom_player.strip() not in nomes_existentes:
+                            sheet_jogadores.append_row([custom_player.strip()])
+                    except: 
+                        pass
+            
+            st.success("✅ O teu Deck foi submetido na base de dados oficial!")
+            
+            st.markdown("---")
+            st.markdown(f"### 🔍 Resumo de Check-in: **{name}**")
+            
+            discord_text = f"🛡️ **Deck Oficial - {name}**\n"
+            for c in combos:
+                if c['type'] == 'Standard (BX / UX)': discord_text += f"🔹 **Combo {c['combo_number']}:** {c['main_blade']} | {c['ratchet']} | {c['bit']}\n"
+                elif c['type'] == 'CX': discord_text += f"🔹 **Combo {c['combo_number']} (CX):** {c['lock_chip']} | {c['main_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
+                elif c['type'] == 'CX Expanded': discord_text += f"🔹 **Combo {c['combo_number']} (CX Exp):** {c['lock_chip']} | {c['metal_blade']} | {c['over_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
+            
+            sum_c1, sum_c2 = st.columns([3, 2])
+            with sum_c1:
+                st.info("Para partilhares no Discord, clica no botão de copiar no topo direito da caixa abaixo.")
+                st.code(discord_text, language="markdown")
+                st.markdown("""
+                💡 **Como colocar no Discord com a foto num único post:**
+                1. Clica no ícone 📋 no canto superior direito da caixa preta acima.
+                2. Clica na tua foto ao lado com o botão direito do rato e escolhe **"Copiar imagem"**.
+                3. Vai ao Discord e faz **Colar (Ctrl+V)** na caixa de mensagens!
+                """)
+            with sum_c2:
+                st.image(up, caption="Fotografia do Deck", use_container_width=True)
+
+elif menu == "⚙️ Painel de Organização":
+    if has_logo:
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <img src="data:image/png;base64,{encoded_logo}" width="45" style="margin-right: 15px;">
+                <h1 style="margin: 0; padding: 0; font-size: 2.2rem;">Admin</h1>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+    else:
+        st.title("🛡️ Admin")
+    
+    if "admin_auth" not in st.session_state:
+        st.session_state.admin_auth = False
+
+    if not st.session_state.admin_auth:
+        with st.form("login_form"):
+            pwd = st.text_input("Password:", type="password")
+            submit = st.form_submit_button("Entrar no Painel 🔑")
+            
+            if submit:
+                if pwd.strip() == ADMIN_PASSWORD:
+                    st.session_state.admin_auth = True
+                    st.rerun() 
+                else:
+                    st.error("❌ Palavra-passe incorreta!")
+
+    if st.session_state.admin_auth:
+        if st.button("Sair (Logout) 🔒"):
+            st.session_state.admin_auth = False
+            st.rerun()
+            
+        st.subheader("📢 Gestão de Eventos")
+        past_events = get_past_events_list()
+        if past_events:
+            with st.expander("📂 Histórico de Eventos (Reabrir)", expanded=False):
+                sel_past = st.selectbox("Selecionar evento antigo:", ["-- Escolher --"] + past_events)
+                if sel_past != "-- Escolher --":
+                    if st.button(f"Ativar '{sel_past}'"): set_event_status(True, sel_past); st.rerun()
+        st.divider()
+        col1, col2 = st.columns(2)
+        ev_n = col1.text_input("Novo Evento:", value=event_status["event_name"])
+        if event_status["is_open"]:
+            if col1.button("FECHAR EVENTO", type="primary"): set_event_status(False, event_status["event_name"]); st.rerun()
+        else:
+            if col1.button("ABRIR EVENTO"): set_event_status(True, ev_n); st.rerun()
+        if col2.button("Limpar Cache 🔄"): st.cache_data.clear(); st.rerun()
+        st.divider()
+        
+        st.subheader("👀 Verificar Decks Submetidos")
+        
+        todos_eventos = list(set([event_status["event_name"]] + past_events)) if event_status["event_name"] else past_events
+        todos_eventos = sorted([e for e in todos_eventos if e.strip()])
+        
+        if todos_eventos:
+            def marcador_status(ev):
+                if ev == event_status["event_name"] and event_status["is_open"]: return f"🟢 [ABERTO] {ev}"
+                elif ev == event_status["event_name"] and not event_status["is_open"]: return f"🔴 [FECHADO] {ev}"
+                else: return f"📁 [ARQUIVADO] {ev}"
+            
+            evento_verificar = st.selectbox("Escolher Evento para Visualizar:", todos_eventos, format_func=marcador_status)
+            
+            recs_admin = get_all_records_cached(evento_verificar)
+            
+            col_metrica, col_pdf = st.columns([1, 1])
+            with col_metrica:
+                st.metric(f"Total de Decks em '{evento_verificar}'", len(recs_admin))
+            
+            with col_pdf:
+                if recs_admin:
+                    pdf_key = f"pdf_pronto_{evento_verificar}"
+                    
+                    if pdf_key not in st.session_state:
+                        if st.button("🛠️ Preparar PDF para Download", use_container_width=True):
+                            with st.spinner("A extrair fotos e a gerar o PDF (pode demorar uns segundos)..."):
+                                st.session_state[pdf_key] = gerar_pdf_decks(recs_admin, evento_verificar)
+                                st.rerun() 
+                    
+                    else:
+                        st.download_button(
+                            label="📄 Descarregar Relatório PDF",
+                            data=st.session_state[pdf_key],
+                            file_name=f"DeckCheck_{evento_verificar.replace(' ', '_')}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True,
+                            type="primary"
+                        )
+            st.divider()
+            
+            for d in recs_admin:
+                with st.expander(f"👤 {d['Player']}"):
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        for i in range(1, 5):
+                            if d.get(f'Combo_{i}'): st.write(f"**Combo {i}:** {d[f'Combo_{i}']}")
+                    c2.image(d['Image_URL'])
+        else:
+            st.info("Ainda não há eventos registados.")
