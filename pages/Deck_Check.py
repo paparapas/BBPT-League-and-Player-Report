@@ -366,12 +366,7 @@ if menu == "📝 Formulário Público":
     lista_dinamica = get_dynamic_player_list()
     opcoes_blader = ["-- Selecionar --"] + lista_dinamica + ["Outro (Novo Jogador)"]
 
-    with st.container(border=True):
-        c_id1, c_id2 = st.columns([1, 2])
-        selected_player = c_id1.selectbox("Blader:", opcoes_blader)
-        custom_player = c_id2.text_input("Novo Blader:") if selected_player == "Outro (Novo Jogador)" else ""
-        
-        # 👇 NOVO BLOCO: IMPORTAR DO DECK BUILDER 👇
+    # 👇 NOVO BLOCO: IMPORTAR DO DECK BUILDER 👇
         if selected_player not in ["-- Selecionar --", "Outro (Novo Jogador)"]:
             try:
                 client = get_gsheet_client()
@@ -400,9 +395,19 @@ if menu == "📝 Formulário Público":
                                 dados_deck = json.loads(slots_disponiveis[deck_escolhido])
                                 st.session_state.num_combos = dados_deck["size"]
                                 
-                                # Carrega as peças para o ecrã
+                                # Carrega as peças com TRADUTOR de formatos!
                                 for i, c in enumerate(dados_deck["combos"]):
-                                    st.session_state[f"c_{i}_type"] = c.get("type", "Standard (BX / UX)")
+                                    
+                                    # 1. O Tradutor de Nomes de Linhas
+                                    tipo_builder = c.get("type", "Basic (BX)")
+                                    if tipo_builder in ["Basic (BX)", "Unique (UX)"]: 
+                                        tipo_check = "Standard (BX / UX)"
+                                    elif tipo_builder == "Custom (CX)": 
+                                        tipo_check = "CX"
+                                    else: 
+                                        tipo_check = "CX Expanded"
+                                        
+                                    st.session_state[f"c_{i}_type"] = tipo_check
                                     st.session_state[f"c_{i}_main_blade"] = c.get("main_blade", "--")
                                     st.session_state[f"c_{i}_ratchet"] = c.get("ratchet", "--")
                                     st.session_state[f"c_{i}_bit"] = c.get("bit", "--")
