@@ -371,6 +371,52 @@ if menu == "📝 Formulário Público":
         selected_player = c_id1.selectbox("Blader:", opcoes_blader)
         custom_player = c_id2.text_input("Novo Blader:") if selected_player == "Outro (Novo Jogador)" else ""
         
+        # 👇 NOVO BLOCO: IMPORTAR DO DECK BUILDER 👇
+        if selected_player not in ["-- Selecionar --", "Outro (Novo Jogador)"]:
+            try:
+                client = get_gsheet_client()
+                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
+                
+                # Tenta encontrar o jogador na coluna 1
+                try:
+                    cell = sheet_contas.find(selected_player, in_column=1)
+                    valores = sheet_contas.row_values(cell.row)
+                    
+                    # Os slots estão nas colunas C até G (índices 2 a 6 no array)
+                    slots_disponiveis = {}
+                    for idx, slot_name in enumerate(["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"]):
+                        col_idx = idx + 2
+                        if col_idx < len(valores) and valores[col_idx].strip().startswith("{"):
+                            slots_disponiveis[slot_name] = valores[col_idx]
+                    
+                    if slots_disponiveis:
+                        st.markdown("---")
+                        st.info("💡 Este jogador tem decks gravados. Podes importá-los diretamente!")
+                        c_load1, c_load2 = st.columns([2, 1])
+                        deck_escolhido = c_load1.selectbox("Carregar Deck Gravado:", ["-- Escolher --"] + list(slots_disponiveis.keys()))
+                        
+                        if c_load2.button("📥 Importar Deck", use_container_width=True):
+                            if deck_escolhido != "-- Escolher --":
+                                dados_deck = json.loads(slots_disponiveis[deck_escolhido])
+                                st.session_state.num_combos = dados_deck["size"]
+                                
+                                # Carrega as peças para o ecrã
+                                for i, c in enumerate(dados_deck["combos"]):
+                                    st.session_state[f"c_{i}_type"] = c.get("type", "Standard (BX / UX)")
+                                    st.session_state[f"c_{i}_main_blade"] = c.get("main_blade", "--")
+                                    st.session_state[f"c_{i}_ratchet"] = c.get("ratchet", "--")
+                                    st.session_state[f"c_{i}_bit"] = c.get("bit", "--")
+                                    st.session_state[f"c_{i}_lock_chip"] = c.get("lock_chip", "--")
+                                    st.session_state[f"c_{i}_assist_blade"] = c.get("assist_blade", "--")
+                                    st.session_state[f"c_{i}_metal_blade"] = c.get("metal_blade", "--")
+                                    st.session_state[f"c_{i}_over_blade"] = c.get("over_blade", "--")
+                                st.rerun() # Faz refresh à página para preencher tudo
+                except gspread.exceptions.CellNotFound:
+                    pass # O Jogador ainda não tem conta registada, ignora silenciosamente
+            except Exception as e:
+                pass # Em caso de erro de net ou API, a app continua a funcionar normalmente
+        # 👆 FIM DO NOVO BLOCO 👆
+        
     with st.container(border=True):
         st.subheader("⚡ Quick Add (Autocomplete Ativo)")
         c1, c2 = st.columns([3, 1])
