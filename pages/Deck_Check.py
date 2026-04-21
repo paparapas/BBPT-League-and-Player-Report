@@ -357,7 +357,7 @@ if menu == "📝 Formulário Público":
         selected_player = c_id1.selectbox("Blader:", opcoes_blader)
         custom_player = c_id2.text_input("Novo Blader:") if selected_player == "Outro (Novo Jogador)" else ""
         
-        # 👇 BLOCO MÁGICO DE IMPORTAÇÃO E TRADUÇÃO 👇
+# 👇 BLOCO MÁGICO ATUALIZADO COM NOMES DE DECKS 👇
         if selected_player not in ["-- Selecionar --", "Outro (Novo Jogador)"]:
             try:
                 client = get_gsheet_client()
@@ -367,6 +367,7 @@ if menu == "📝 Formulário Público":
                     cell = sheet_contas.find(selected_player, in_column=1)
                     valores = sheet_contas.row_values(cell.row)
                     
+                    # Slots estão nas colunas C até G (índices 2 a 6 no array do row_values)
                     slots_disponiveis = {}
                     for idx, slot_name in enumerate(["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"]):
                         col_idx = idx + 2
@@ -375,15 +376,30 @@ if menu == "📝 Formulário Público":
                     
                     if slots_disponiveis:
                         st.markdown("---")
-                        st.info("💡 Este jogador tem decks gravados. Podes importá-los diretamente!")
+                        
+                        # --- NOVO: Traduzir os JSONs para Labels com nomes reais ---
+                        opcoes_com_nome = {}
+                        for s_id, s_json in slots_disponiveis.items():
+                            try:
+                                d_data = json.loads(s_json)
+                                # Se o deck tiver nome, mostra o nome. Ex: "Deck Stamina (Slot 1)"
+                                # Se não tiver (decks antigos), mostra apenas "Slot 1"
+                                nome_custom = d_data.get('deck_name')
+                                label = f"{nome_custom} ({s_id})" if nome_custom else s_id
+                                opcoes_com_nome[label] = s_json
+                            except:
+                                opcoes_com_nome[s_id] = s_json
+
+                        st.info("💡 Decks gravados encontrados!")
                         c_load1, c_load2 = st.columns([2, 1])
-                        deck_escolhido = c_load1.selectbox("Carregar Deck Gravado:", ["-- Escolher --"] + list(slots_disponiveis.keys()))
+                        deck_sel_label = c_load1.selectbox("Carregar Deck Gravado:", ["-- Escolher --"] + list(opcoes_com_nome.keys()))
                         
                         if c_load2.button("📥 Importar Deck", use_container_width=True):
-                            if deck_escolhido != "-- Escolher --":
-                                dados_deck = json.loads(slots_disponiveis[deck_escolhido])
-                                st.session_state.num_combos = dados_deck["size"]
+                            if deck_sel_label != "-- Escolher --":
+                                dados_deck = json.loads(opcoes_com_nome[deck_sel_label])
+                                st.session_state.num_combos = dados_deck.get("size", 3)
                                 
+                                # Carrega as peças com o Tradutor de Formatos (Builder -> Check)
                                 for i, c in enumerate(dados_deck["combos"]):
                                     tipo_builder = c.get("type", "Basic (BX)")
                                     if tipo_builder in ["Basic (BX)", "Unique (UX)"]: 
@@ -405,6 +421,7 @@ if menu == "📝 Formulário Público":
                 except gspread.exceptions.CellNotFound:
                     pass 
             except Exception as e:
+                # Caso a aba Contas não exista ou outro erro de rede
                 pass
         # 👆 FIM DO BLOCO MÁGICO 👆
         
