@@ -223,7 +223,6 @@ for i in range(4):
         if f"b_c_{i}_{k}" not in st.session_state:
             st.session_state[f"b_c_{i}_{k}"] = "--"
 
-# --- INTERFACE DE LOGIN NA BARRA LATERAL ---
 st.sidebar.title("🔐 Área Pessoal")
 
 if st.session_state.logged_in_user is None:
@@ -237,7 +236,6 @@ if st.session_state.logged_in_user is None:
                 client = get_gsheet_client()
                 sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
                 records = sheet_contas.get_all_records()
-                
                 user_found = False
                 for row in records:
                     if str(row["Nome"]).strip().lower() == user_input.strip().lower():
@@ -249,8 +247,8 @@ if st.session_state.logged_in_user is None:
                             st.error("❌ Password incorreta!")
                 if not user_found:
                     st.error("❌ Utilizador não encontrado.")
-            except Exception as e:
-                st.error("⚠️ Erro de ligação à BD. Criaste a aba 'Contas'?")
+            except:
+                st.error("⚠️ Erro de ligação à BD.")
 else:
     st.sidebar.success(f"Bem-vindo, {st.session_state.logged_in_user}!")
     if st.sidebar.button("Sair"):
@@ -258,10 +256,13 @@ else:
         st.rerun()
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 💾 Gravar Deck Atual")
+    st.sidebar.markdown("### 🗄️ Meus Decks")
     slot_choice = st.sidebar.selectbox("Escolher Slot:", ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"])
     
-    if st.sidebar.button("Gravar no " + slot_choice, type="primary", use_container_width=True):
+    # --- COLUNAS PARA GRAVAR E CARREGAR ---
+    col_save, col_load = st.sidebar.columns(2)
+    
+    if col_save.button("💾 Gravar", use_container_width=True, type="primary"):
         deck_to_save = {"size": st.session_state.deck_size, "combos": []}
         for i in range(st.session_state.deck_size):
             combo = {
@@ -277,9 +278,7 @@ else:
                 "over_blade": st.session_state.get(f"b_c_{i}_over_blade", "--")
             }
             deck_to_save["combos"].append(combo)
-            
         json_string = json.dumps(deck_to_save)
-        
         with st.spinner("A gravar..."):
             try:
                 client = get_gsheet_client()
@@ -287,9 +286,38 @@ else:
                 cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
                 col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
                 sheet_contas.update_cell(cell.row, col_index, json_string)
-                st.sidebar.success(f"✅ Gravado com sucesso no {slot_choice}!")
-            except Exception as e:
-                st.sidebar.error("❌ Erro ao gravar. Tenta novamente.")
+                st.sidebar.success(f"Gravado!")
+            except:
+                st.sidebar.error("Erro!")
+
+    if col_load.button("📥 Carregar", use_container_width=True):
+        with st.spinner("A carregar..."):
+            try:
+                client = get_gsheet_client()
+                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
+                cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
+                col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
+                raw_data = sheet_contas.cell(cell.row, col_index).value
+                
+                if raw_data and raw_data.startswith("{"):
+                    loaded_deck = json.loads(raw_data)
+                    st.session_state.deck_size = loaded_deck.get("size", 3)
+                    for i, c in enumerate(loaded_deck["combos"]):
+                        st.session_state[f"b_c_{i}_type"] = c.get("type", "Basic (BX)")
+                        st.session_state[f"b_c_{i}_spin"] = c.get("spin", "Right Spin")
+                        st.session_state[f"b_c_{i}_bt"] = c.get("bt", "Attack")
+                        st.session_state[f"b_c_{i}_main_blade"] = c.get("main_blade", "--")
+                        st.session_state[f"b_c_{i}_ratchet"] = c.get("ratchet", "--")
+                        st.session_state[f"b_c_{i}_bit"] = c.get("bit", "--")
+                        st.session_state[f"b_c_{i}_lock_chip"] = c.get("lock_chip", "--")
+                        st.session_state[f"b_c_{i}_assist_blade"] = c.get("assist_blade", "--")
+                        st.session_state[f"b_c_{i}_metal_blade"] = c.get("metal_blade", "--")
+                        st.session_state[f"b_c_{i}_over_blade"] = c.get("over_blade", "--")
+                    st.rerun()
+                else:
+                    st.sidebar.warning("Slot vazio!")
+            except:
+                st.sidebar.error("Erro!")
 
 # ==========================================
 # RANDOMIZER E UTILIDADES
@@ -321,7 +349,6 @@ def randomize_deck():
         st.session_state[f"b_c_{i}_type"] = ctype
         st.session_state[f"b_c_{i}_spin"] = random.choice(spins)
         st.session_state[f"b_c_{i}_bt"] = random.choice(b_types)
-        
         for k in ["main_blade", "ratchet", "bit", "lock_chip", "assist_blade", "metal_blade", "over_blade"]:
             st.session_state[f"b_c_{i}_{k}"] = "--"
             
