@@ -595,4 +595,4 @@ with col_export:
         </div>
         """
         
-    st.markdown(visual_report_html, unsafe_allow_html=True)
+        st.markdown(visual_report_html, unsafe_allow_html=True)
