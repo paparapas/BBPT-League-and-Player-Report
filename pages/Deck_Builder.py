@@ -4,6 +4,10 @@ import random
 import re
 import base64
 import os
+import gspread
+from google.oauth2.service_account import Credentials
+import json
+import hashlib
 
 # ==========================================
 # CONFIGURAÇÃO DE PÁGINA E CSS
@@ -18,14 +22,12 @@ st.markdown("""
     .part-name { font-size: 0.8rem; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .part-category { font-size: 0.65rem; color: #666; text-transform: uppercase; }
     
-    /* Fundo branco para logótipos escuros */
     .light-backdrop-icon {
         background-color: rgba(255, 255, 255, 0.85);
         padding: 3px 6px;
         border-radius: 6px;
     }
     
-    /* Estilos do Cartão Final de Resumo */
     .deck-summary-box {
         background-color: #0f111a;
         border-radius: 12px;
@@ -61,7 +63,6 @@ st.markdown("""
         filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
     }
     
-    /* 👇 MAGIA DA MONTAGEM CX/CXE 👇 */
     .composite-blade-container {
         position: relative;
         width: 110px;
@@ -78,7 +79,6 @@ st.markdown("""
     .layer-metal { width: 110px; height: 110px; z-index: 1; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); }
     .layer-main { width: 110px; height: 110px; z-index: 2; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); }
     .layer-chip { width: 45px; height: 45px; z-index: 3; } 
-    /* 👆 FIM DA MAGIA 👆 */
 
     .combo-info {
         display: flex;
@@ -111,27 +111,33 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛠️ Custom Deck Builder")
-st.markdown("Constrói, testa e exporta os teus decks. Validação automática de regras BBPT ativada.")
+# ==========================================
+# LIGAÇÃO À BASE DE DADOS (GOOGLE SHEETS)
+# ==========================================
+@st.cache_resource
+def get_gsheet_client():
+    scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+    creds_dict = dict(st.secrets["GCP_CREDENTIALS"])
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    return gspread.authorize(creds)
+
+def get_sheet_id():
+    url = st.secrets["SHEET_URL"]
+    return url.split("/d/")[1].split("/")[0] if "/d/" in url else url
 
 # ==========================================
 # CONVERSOR DE IMAGENS LOCAIS PARA BASE64
 # ==========================================
 @st.cache_data
 def get_local_image_as_base64(file_name):
-    # Procura o ficheiro na raiz ou na diretoria acima (caso este ficheiro esteja numa sub-pasta)
     paths_to_try = [file_name, os.path.join("..", file_name)]
-    
     for path in paths_to_try:
         if os.path.exists(path):
             with open(path, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode()
             return f"data:image/png;base64,{encoded}"
-            
-    # Se não encontrar a imagem no repositório, retorna um placeholder
     return "https://via.placeholder.com/150"
 
-# Dicionários atualizados para ir buscar à pasta local em vez do ImgBB
 ICONS = {
     "Right Spin": get_local_image_as_base64("Right-Spin_logo_Beyblade_X.png"),
     "Left Spin": get_local_image_as_base64("Left-Spin_logo_Beyblade_X.png"),
@@ -202,7 +208,11 @@ def load_builder_data():
 
 parts, images_map = load_builder_data()
 
+# ==========================================
+# GESTOR DE ESTADO E LOGIN (SIDEBAR)
+# ==========================================
 if "deck_size" not in st.session_state: st.session_state.deck_size = 3
+if "logged_in_user" not in st.session_state: st.session_state.logged_in_user = None
 
 for i in range(4):
     if f"b_c_{i}_type" not in st.session_state: st.session_state[f"b_c_{i}_type"] = "Basic (BX)"
@@ -213,6 +223,77 @@ for i in range(4):
         if f"b_c_{i}_{k}" not in st.session_state:
             st.session_state[f"b_c_{i}_{k}"] = "--"
 
+# --- INTERFACE DE LOGIN NA BARRA LATERAL ---
+st.sidebar.title("🔐 Área Pessoal")
+
+if st.session_state.logged_in_user is None:
+    with st.sidebar.form("login_form"):
+        st.write("Acede aos teus Decks Gravados:")
+        user_input = st.text_input("Blader (Nome):")
+        pass_input = st.text_input("Password:", type="password")
+        if st.form_submit_button("Entrar"):
+            pass_hash = hashlib.md5(pass_input.encode()).hexdigest()
+            try:
+                client = get_gsheet_client()
+                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
+                records = sheet_contas.get_all_records()
+                
+                user_found = False
+                for row in records:
+                    if str(row["Nome"]).strip().lower() == user_input.strip().lower():
+                        user_found = True
+                        if str(row["Password"]).strip() == pass_hash:
+                            st.session_state.logged_in_user = row["Nome"]
+                            st.rerun()
+                        else:
+                            st.error("❌ Password incorreta!")
+                if not user_found:
+                    st.error("❌ Utilizador não encontrado.")
+            except Exception as e:
+                st.error("⚠️ Erro de ligação à BD. Criaste a aba 'Contas'?")
+else:
+    st.sidebar.success(f"Bem-vindo, {st.session_state.logged_in_user}!")
+    if st.sidebar.button("Sair"):
+        st.session_state.logged_in_user = None
+        st.rerun()
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 💾 Gravar Deck Atual")
+    slot_choice = st.sidebar.selectbox("Escolher Slot:", ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"])
+    
+    if st.sidebar.button("Gravar no " + slot_choice, type="primary", use_container_width=True):
+        deck_to_save = {"size": st.session_state.deck_size, "combos": []}
+        for i in range(st.session_state.deck_size):
+            combo = {
+                "type": st.session_state[f"b_c_{i}_type"],
+                "spin": st.session_state.get(f"b_c_{i}_spin", "Right Spin"),
+                "bt": st.session_state.get(f"b_c_{i}_bt", "Attack"),
+                "main_blade": st.session_state.get(f"b_c_{i}_main_blade", "--"),
+                "ratchet": st.session_state.get(f"b_c_{i}_ratchet", "--"),
+                "bit": st.session_state.get(f"b_c_{i}_bit", "--"),
+                "lock_chip": st.session_state.get(f"b_c_{i}_lock_chip", "--"),
+                "assist_blade": st.session_state.get(f"b_c_{i}_assist_blade", "--"),
+                "metal_blade": st.session_state.get(f"b_c_{i}_metal_blade", "--"),
+                "over_blade": st.session_state.get(f"b_c_{i}_over_blade", "--")
+            }
+            deck_to_save["combos"].append(combo)
+            
+        json_string = json.dumps(deck_to_save)
+        
+        with st.spinner("A gravar..."):
+            try:
+                client = get_gsheet_client()
+                sheet_contas = client.open_by_key(get_sheet_id()).worksheet("Contas")
+                cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
+                col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
+                sheet_contas.update_cell(cell.row, col_index, json_string)
+                st.sidebar.success(f"✅ Gravado com sucesso no {slot_choice}!")
+            except Exception as e:
+                st.sidebar.error("❌ Erro ao gravar. Tenta novamente.")
+
+# ==========================================
+# RANDOMIZER E UTILIDADES
+# ==========================================
 def clear_deck():
     for i in range(4):
         st.session_state[f"b_c_{i}_type"] = "Basic (BX)"
@@ -266,6 +347,12 @@ def randomize_deck():
             st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
             st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
 
+# ==========================================
+# TÍTULO E INTERFACE PRINCIPAL
+# ==========================================
+st.title("🛠️ Custom Deck Builder")
+st.markdown("Constrói, testa e exporta os teus decks. Validação automática de regras BBPT ativada.")
+
 col_size, col_clear, col_rand = st.columns([2, 1, 1])
 with col_size:
     st.radio("Tamanho do Deck:", options=[3, 4], horizontal=True, key="deck_size")
@@ -283,6 +370,9 @@ def render_part_card(part_name, category):
     img_url = images_map.get(part_name, "https://via.placeholder.com/150?text=No+Image")
     st.markdown(f'<div class="part-card"><img src="{img_url}" alt="{part_name}" referrerpolicy="no-referrer"><div class="part-category">{category}</div><div class="part-name" title="{part_name}">{part_name}</div></div>', unsafe_allow_html=True)
 
+# ==========================================
+# CONSTRUTOR DE COMBOS
+# ==========================================
 for i in range(st.session_state.deck_size):
     with st.container(border=True):
         c_title, c_type, c_spin, c_bt = st.columns([1.2, 2, 1, 1])
