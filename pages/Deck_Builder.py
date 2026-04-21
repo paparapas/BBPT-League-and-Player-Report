@@ -564,13 +564,35 @@ with col_export:
     st.code(deck_text_export, language="markdown")
 
 if not missing_parts and not has_duplicates:
-    # --- NOVO: TÍTULO DINÂMICO ---
+    # --- TÍTULO DINÂMICO ---
+    # Se o deck tiver nome no session_state, usa-o. Se não, usa "DECK SUMMARY"
     display_title = st.session_state.current_deck_name.upper() if st.session_state.get("current_deck_name") else "DECK SUMMARY"
     
     html_rows = ""
     for c in combo_data_for_visual:
-        html_rows += f'<div class="combo-row">{c["image_html"]}...</div>' # Mantém o teu loop igual
+        # Aqui montamos a estrutura completa de cada linha do sumário
+        html_rows += f"""
+        <div class="combo-row">
+            {c['image_html']}
+            <div class="combo-info">
+                <div class="combo-top-line">
+                    {c['logos_html']}
+                    <img class="combo-icon light-backdrop-icon" src="{c['spin']}" alt="Spin" referrerpolicy="no-referrer">
+                </div>
+                <div class="combo-bottom-line">
+                    <img class="combo-icon" src="{c['type']}" alt="Type" referrerpolicy="no-referrer">
+                    <span class="combo-text">{c['name']}</span>
+                </div>
+            </div>
+        </div>
+        """
     
-    # Usa o display_title aqui:
-    visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">{display_title}</div>{html_rows}</div>'
+    # Montagem final do cartão preto
+    visual_report_html = f"""
+    <div class="deck-summary-box">
+        <div class="deck-summary-title">{display_title}</div>
+        {html_rows}
+    </div>
+    """
+    
     st.markdown(visual_report_html, unsafe_allow_html=True)
