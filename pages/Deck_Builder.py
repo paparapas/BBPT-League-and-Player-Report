@@ -263,10 +263,10 @@ if st.session_state.logged_in_user is None:
                             st.rerun()
                         else:
                             st.error("❌ Password incorreta!")
-                if not user_found:
-                    st.error("❌ Utilizador não encontrado.")
-            except:
-                st.error("⚠️ Erro de ligação à BD.")
+                    if not user_found:
+                        st.error("❌ Utilizador não encontrado.")
+                except Exception as e:
+                    st.error(f"⚠️ Erro de ligação à BD: {e}")
 else:
     st.sidebar.success(f"Bem-vindo, {st.session_state.logged_in_user}!")
     if st.sidebar.button("Sair"):
