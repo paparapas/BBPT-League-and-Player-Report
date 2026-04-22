@@ -13,7 +13,7 @@ from google.oauth2.service_account import Credentials
 from st_keyup import st_keyup
 import tempfile
 import io
-from PIL import Image
+from PIL import Image   
 from fpdf import FPDF
 
 # ==========================================
@@ -371,7 +371,14 @@ if menu == "📝 Formulário Público":
                     for idx, slot_name in enumerate(["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"]):
                         col_idx = idx + 2
                         if col_idx < len(valores) and valores[col_idx].strip().startswith("{"):
-                            slots_disponiveis[slot_name] = valores[col_idx]
+                            raw_val = valores[col_idx]
+                            try:
+                                d_data = json.loads(raw_val)
+                                d_name = d_data.get("name", "").strip()
+                                display_name = f"{slot_name} - {d_name}" if d_name else slot_name
+                                slots_disponiveis[display_name] = raw_val
+                            except:
+                                slots_disponiveis[slot_name] = raw_val
                     
                     if slots_disponiveis:
                         st.markdown("---")
