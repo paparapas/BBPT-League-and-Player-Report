@@ -239,7 +239,7 @@ if page == "🏠 Página Inicial":
             if avisos:
                 st.write(avisos)
             else:
-                st.info("Sem avisos de momento. Aproveita para construir os teus decks!")
+                st.info("Sempre que fizeres o teu deck check, não te esqueças de incluir uma foto das peças originais com que vais jogar!")
 
 elif page == "Liga Critical":
     render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
