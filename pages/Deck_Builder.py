@@ -177,6 +177,7 @@ DATASET_PARTS = "Dataset_BeybladeParts_Final_Images.xlsx"
 def load_builder_data():
     parts_dict = {}
     images_dict = {}
+    spin_dict = {}
     bx_list = []
     ux_list = []
     
@@ -190,6 +191,15 @@ def load_builder_data():
                 if pd.isna(name) or name in ['-', '', 'nan'] or "Unnamed" in name: 
                     continue
                 clean_list.append(name)
+                
+                # Leitura da Direção de Rotação (Spin Direction)
+                spin_val = "Right"
+                if 'Spin Direction' in df.columns:
+                    spin_raw = str(row['Spin Direction']).strip().title()
+                    if spin_raw == "Left":
+                        spin_val = "Left"
+                spin_dict[name] = f"{spin_val} Spin"
+
                 if sheet_name == 'Blades BX-UX':
                     linhagem = ""
                     if 'Linhagem' in df.columns:
@@ -215,12 +225,12 @@ def load_builder_data():
             "metal_blades": parts_dict.get('Metal Blades', []), 
             "over_blades": parts_dict.get('Over Blades', []),
             "lock_chips": parts_dict.get('Lock Chips', [])
-        }, images_dict
+        }, images_dict, spin_dict
     except Exception as e:
         st.error(f"Erro ao carregar ficheiro Excel: {e}")
-        return {k: [] for k in ["bx_blades", "ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
+        return {k: [] for k in ["bx_blades", "ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}, {}
 
-parts, images_map = load_builder_data()
+parts, images_map, spin_map = load_builder_data()
 
 # ==========================================
 # GESTOR DE ESTADO E LOGIN (SIDEBAR)
@@ -373,7 +383,6 @@ def randomize_deck():
     st.session_state.deck_name = ""
     used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
     types = ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"]
-    spins = ["Right Spin", "Left Spin"]
     b_types = ["Attack", "Defense", "Stamina", "Balance"]
     
     def pick_unique(pool, used_set):
@@ -386,7 +395,6 @@ def randomize_deck():
     for i in range(st.session_state.deck_size):
         ctype = random.choice(types)
         st.session_state[f"b_c_{i}_type"] = ctype
-        st.session_state[f"b_c_{i}_spin"] = random.choice(spins)
         st.session_state[f"b_c_{i}_bt"] = random.choice(b_types)
         for k in ["main_blade", "ratchet", "bit", "lock_chip", "assist_blade", "metal_blade", "over_blade"]:
             st.session_state[f"b_c_{i}_{k}"] = "--"
@@ -451,8 +459,17 @@ for i in range(st.session_state.deck_size):
             else:
                 st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
         with c_spin:
-            sp = st.selectbox("Rotação", ["Right Spin", "Left Spin"], key=f"b_c_{i}_spin", label_visibility="collapsed")
-            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+            # Lógica Automática do Spin
+            if ct == "Expand (CXE)":
+                current_blade = st.session_state.get(f"b_c_{i}_over_blade", "--")
+            else:
+                current_blade = st.session_state.get(f"b_c_{i}_main_blade", "--")
+                
+            sp = spin_map.get(current_blade, "Right Spin")
+            st.session_state[f"b_c_{i}_spin"] = sp
+            
+            st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;' title='{sp}'>", unsafe_allow_html=True)
+            
         with c_bt:
             bt = st.selectbox("Tipo", ["Attack", "Defense", "Stamina", "Balance"], key=f"b_c_{i}_bt", label_visibility="collapsed")
             st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
