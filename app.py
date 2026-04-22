@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import base64
 import os
+import re
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -69,8 +70,8 @@ if not db:
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.divider()
 
-# 👇 ADICIONADA A NOVA PÁGINA DE CONTACTOS 👇
 page = st.sidebar.radio("Navegação:", [
+    "🏠 Página Inicial",
     "Liga Critical", 
     "Liga Versus", 
     "Torneio de Equipas - Liga Versus", 
@@ -107,11 +108,6 @@ def render_advanced_metrics(metrics, league_mode=True):
     * **Média (5.0 - 6.5 Pts):** Meta Equilibrada (Mistura saudável de Spin, Burst e Over Finishes)
     * **Baixa (< 5.0 Pts):** Meta de Defesa/Stamina (Jogos longos, muitas rondas decididas por Spin Finishes de 1 ponto. Ex: 4-3, 5-4)
     """)
-
-import base64
-import os
-import pandas as pd
-import streamlit as st
 
 # ==========================================
 # FUNÇÃO PARA RENDERIZAR PÁGINAS DE LIGA
@@ -191,7 +187,59 @@ def render_league_page(league_name, league_key, comm_file):
 # ==========================================
 # RENDERIZAÇÃO DA PÁGINA ESCOLHIDA
 # ==========================================
-if page == "Liga Critical":
+if page == "🏠 Página Inicial":
+    # --- CABEÇALHO ---
+    col_logo, col_titulo = st.columns([1, 4])
+    with col_logo:
+        st.image("logo.png", width=120)
+    with col_titulo:
+        st.markdown("<h1 style='font-size: 3.5rem; margin-bottom: 0;'>BBPT Hub 🌀</h1>", unsafe_allow_html=True)
+        st.markdown("### O centro oficial de dados e estatísticas competitivas de Beyblade em Portugal.")
+    
+    st.divider()
+    
+    # --- DESTAQUES / DASHBOARD ---
+    c1, c2 = st.columns([2, 1])
+    
+    with c1:
+        st.subheader("🏆 Bem-vindo ao Circuito")
+        st.markdown("""
+        Explora o menu lateral para acederes aos **Rankings Globais**, analisares o teu **Blader Profile** com a ajuda do nosso AI Coach, ou consultares as tabelas classificativas atuais das Ligas Critical e Versus.
+        
+        Não te esqueças de utilizar o nosso **Deck Builder** e de submeter a tua equipa no **Deck Check** oficial antes do início de cada torneio!
+        """)
+        
+        st.write("")
+        st.subheader("💰 Transparência do Fundo da Liga")
+        fundo_txt = load_communications("fundoLiga.txt")
+        if fundo_txt:
+            st.info(fundo_txt)
+        else:
+            st.info("""
+            **Pote de Prémios (Previsão Atual):** Aguardar atualização...
+            
+            Os valores previsionais e correntes do pote de prémios, juntamente com a análise de cenários, serão aqui atualizados regularmente para garantir uma total transparência. No final da liga, uma percentagem deste fundo está reservada para oferecer um lanche a todos os participantes!
+            """)
+
+    with c2:
+        with st.container(border=True):
+            st.markdown("<h3 style='text-align: center;'>👑 Global #1</h3>", unsafe_allow_html=True)
+            try:
+                top1 = db['global_versus']['rankings'][0]
+                st.markdown(f"<h2 style='text-align: center; color: #ff4b4b; margin:0;'>{top1['Player']}</h2>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align: center; color: gray;'>{top1['Elo']} ELO</p>", unsafe_allow_html=True)
+            except:
+                st.markdown("<p style='text-align: center;'>A calcular rankings...</p>", unsafe_allow_html=True)
+                
+        with st.container(border=True):
+            st.markdown("#### 📢 Últimos Avisos")
+            avisos = load_communications("comunicacoesGerais.txt")
+            if avisos:
+                st.write(avisos)
+            else:
+                st.caption("Sem avisos de momento. Prepara os teus combos!")
+
+elif page == "Liga Critical":
     render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
 
 elif page == "Liga Versus":
@@ -238,7 +286,6 @@ elif page == "Rankings Globais":
 
     render_advanced_metrics(db['global_versus'].get('advanced_metrics', {}), league_mode=False)
 
-    # 👇 NOVA SECÇÃO DE LOG DOS TORNEIOS CONTABILIZADOS 👇
     st.divider()
     st.subheader("📋 Audit Log: Torneios Globais")
     st.markdown("Lista de todos os torneios que estão a alimentar o Power Rating Global e os Perfis Ad-Hoc.")
@@ -272,13 +319,11 @@ elif page == "Ad-Hoc: Blader Profile":
                 rank_atual = r.get('Rank', 'N/A')
                 break
                 
-        # Calcula o total de torneios globais pelo jogador que mais participou
         total_eventos_globais = max((int(prof.get('events_played', 0)) for prof in db['global_versus']['profiles'].values()), default=0)
         
         total_matches = int(p_data.get('total_matches', 0))
         events_played = int(p_data.get('events_played', 0))
         
-        # Calcula vitórias somando diretamente dos matchups do profile global
         total_wins = sum(int(m.get('Wins', 0)) for m in p_data.get('matchups', []))
         total_losses = total_matches - total_wins
         win_rate = p_data.get('win_rate', 0)
@@ -290,18 +335,13 @@ elif page == "Ad-Hoc: Blader Profile":
         fourth_place = 0
         top_8_place = 0
         
-        import re
-        
-        # Vamos ao texto do AI Prompt buscar a linha "Histórico de Pódios:"
         ai_prompt = p_data.get('ai_prompt', '')
         podios_match = re.search(r'Histórico de Pódios:\s*([^\n]+)', ai_prompt)
         
         if podios_match:
             record_str = podios_match.group(1).strip()
             
-            # O teu gerador escreve "Nenhum Top 8" se não houver vitórias
             if record_str and record_str != "Nenhum Top 8":
-                # O gerador exporta sempre no formato exato: "3x 1st, 1x 2nd, 2x 5th"
                 for item in record_str.split(','):
                     item = item.strip().lower()
                     if not item: continue
@@ -320,7 +360,6 @@ elif page == "Ad-Hoc: Blader Profile":
         tournaments_won = first_place
         made_top_cut = first_place + second_place + third_place + fourth_place + top_8_place
         
-        # Matemática infalível: Eventos Jogados Globalmente - Eventos onde fez Top 8
         missed_top_cut = events_played - made_top_cut
         if missed_top_cut < 0: missed_top_cut = 0
 
@@ -447,7 +486,6 @@ elif page == "Ad-Hoc: Blader Profile":
             df_history.index.name = "#"
         st.dataframe(df_history, use_container_width=True)
 
-        # 👇 NOVA SECÇÃO DE LOG DOS TORNEIOS NO PROFILE 👇
         st.divider()
         st.subheader("📋 Audit Log: Torneios Analisados")
         st.markdown("Estes são os torneios provenientes do ficheiro `my_tournaments_global_versus.txt` usados para esta análise.")
@@ -462,14 +500,11 @@ elif page == "Ad-Hoc: Blader Profile":
         else:
             st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global (lembra-te de atualizar o gerador bbpt_admin_sync.py).")
 
-# 👇 A NOVA PÁGINA DE CONTACTOS E EQUIPA 👇
 elif page == "Contactos & Equipa":
     st.title("📞 Contactos & Organização")
     
-    # Redes Sociais com Botões
     st.subheader("🌐 Comunidade e Redes Sociais")
     
-    # 🔥 CORREÇÃO AQUI: 4 COLUNAS EM VEZ DE 3 🔥
     c1, c2, c3, c4 = st.columns(4) 
     
     with c1:
@@ -486,13 +521,10 @@ elif page == "Contactos & Equipa":
     st.subheader("👥 Quadro da Organização e Gestão")
     st.markdown("Conhece a equipa responsável pela manutenção e integridade da Liga BBPT.")
     
-    # Carregar e processar o ficheiro de texto em Frames separados
     conteudo_org = load_communications("organizacao.txt")
     if conteudo_org:
-        # Corta o texto sempre que houver "==="
         seccoes = conteudo_org.split("===")
         
-        # O Streamlit coloca cada pedaço dentro de um quadro com borda!
         for seccao in seccoes:
             if seccao.strip():
                 with st.container(border=True):
