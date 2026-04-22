@@ -81,15 +81,15 @@ with col_dir:
     cartazes = [
         {
             "nome": "Torneio Critical Hit (18/04) - Formato BP - https://challonge.com/tournaments/signup/lZfxXYurm4#/signup/x187klm9fc7",
-            "url": "https://media.discordapp.net/attachments/1326607636841369630/1493728179603636294/Torneio_Critical_Hit_31_01.png?ex=69e00646&is=69deb4c6&hm=306e8168d48e194393d86a19bd3d7493fa424d0e023f911980a6c7cb6a167676&=&format=webp&quality=lossless"
+            "url": ""
         },
         {
             "nome": "Torneio Versus Game Center (19/04) - Liga Versus X -  https://challonge.com/tournaments/signup/Vny1pnj2ym#/signup/s8h0dvhezu",
-            "url": "https://media.discordapp.net/attachments/1326607636841369630/1493728180610138193/Versus_Clash_08_02_copy.png?ex=69e00646&is=69deb4c6&hm=84fe78891ba5b0865edce52803a2afeec19dd54ed1f996bda0c11f275bc496e7&=&format=webp&quality=lossless"
+            "url": ""
         },
         {
-            "nome": "Torneio Mercadia (19/04) - https://challonge.com/tournaments/signup/cGd8UhWGY1#/signup/gq3a717fwie",
-            "url": "https://media.discordapp.net/attachments/1326607636841369630/1493728181373636780/Torneio_Mercadia_08_02.png?ex=69e00646&is=69deb4c6&hm=916b8cd5db88b5c2b1ca179f3d8b86c3367b4854242c762906d64e8e850b0936&=&format=webp&quality=lossless"
+            "nome": "Torneio Mercadia (19/04) - https://challonge.com/tournaments/signup/gjOWhelTeM#/signup/arhq12h2cgq",
+            "url": "https://cdn.discordapp.com/attachments/1326607636841369630/1496529852872921179/Torneio_Critical_Hit_31_01_copy_1.png?ex=69ea3789&is=69e8e609&hm=4794afb3a529a1a0264819d11a571bf661b2b038bcc1b0c9e9da1801ffc47ead&"
         }
     ]
     
