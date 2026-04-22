@@ -80,15 +80,15 @@ with col_dir:
 
     cartazes = [
         {
-            "nome": "Torneio Critical Hit (18/04) - Formato BP - https://challonge.com/tournaments/signup/lZfxXYurm4#/signup/x187klm9fc7",
+            "nome": " (terminado) Torneio Critical Hit (18/04) - Formato BP - https://challonge.com/tournaments/signup/lZfxXYurm4#/signup/x187klm9fc7",
             "url": ""
         },
         {
-            "nome": "Torneio Versus Game Center (19/04) - Liga Versus X -  https://challonge.com/tournaments/signup/Vny1pnj2ym#/signup/s8h0dvhezu",
+            "nome": " (terminado) Torneio Versus Game Center (19/04) - Liga Versus X -  https://challonge.com/tournaments/signup/Vny1pnj2ym#/signup/s8h0dvhezu",
             "url": ""
         },
         {
-            "nome": "Torneio Mercadia (19/04) - https://challonge.com/tournaments/signup/gjOWhelTeM#/signup/arhq12h2cgq",
+            "nome": "Torneio Mercadia (26/04) - https://challonge.com/tournaments/signup/gjOWhelTeM#/signup/arhq12h2cgq",
             "url": "https://cdn.discordapp.com/attachments/1326607636841369630/1496529852872921179/Torneio_Critical_Hit_31_01_copy_1.png?ex=69ea3789&is=69e8e609&hm=4794afb3a529a1a0264819d11a571bf661b2b038bcc1b0c9e9da1801ffc47ead&"
         }
     ]
