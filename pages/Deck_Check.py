@@ -40,7 +40,8 @@ def get_sheet_id():
     return url.split("/d/")[1].split("/")[0] if "/d/" in url else url
 
 # --- LEITURA COM CACHE ---
-@st.cache_data(ttl=15)
+# Aumentado para 5 minutos para evitar Rate Limits da Google
+@st.cache_data(ttl=300)
 def get_event_status_cached():
     try:
         client = get_gsheet_client()
@@ -54,7 +55,8 @@ def get_event_status_cached():
         return {"is_open": False, "event_name": ""}
     except: return {"is_open": False, "event_name": ""}
 
-@st.cache_data(ttl=30)
+# Aumentado para 2 minutos
+@st.cache_data(ttl=120)
 def get_all_records_cached(event_name):
     try:
         client = get_gsheet_client()
@@ -66,7 +68,8 @@ def get_all_records_cached(event_name):
         return [r for r in ws.get_all_records() if r.get("Event_Name") == event_name]
     except: return []
 
-@st.cache_data(ttl=60)
+# Aumentado para 10 minutos
+@st.cache_data(ttl=600)
 def get_past_events_list():
     try:
         client = get_gsheet_client()
