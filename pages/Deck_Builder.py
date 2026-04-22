@@ -55,30 +55,48 @@ st.markdown("""
     .combo-row:last-child {
         border-bottom: none;
     }
-    .combo-blade-img {
-        width: 110px;
-        height: 110px;
-        object-fit: contain;
-        margin-right: 20px;
-        filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
-    }
-    
-    .composite-blade-container {
-        position: relative;
-        width: 110px;
-        height: 110px;
-        margin-right: 20px;
-    }
-    .composite-layer {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        object-fit: contain;
-    }
-    .layer-metal { width: 110px; height: 110px; z-index: 1; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); }
-    .layer-main { width: 110px; height: 110px; z-index: 2; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); }
-    .layer-chip { width: 45px; height: 45px; z-index: 3; } 
+    /* ---- AJUSTE DE IMAGENS BX/UX ---- */
+        .combo-blade-img {
+            width: 110px;
+            height: 110px;
+            flex-shrink: 0; /* Impede que a imagem encolha no telemóvel */
+            object-fit: contain;
+            margin-right: 20px;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
+        }
+        
+        /* ---- AJUSTE DE IMAGENS CX E CX EXPANDED ---- */
+        .composite-blade-container {
+            position: relative;
+            width: 110px; /* Tem de ser exatamente igual ao da .combo-blade-img */
+            height: 110px; /* Tem de ser exatamente igual ao da .combo-blade-img */
+            flex-shrink: 0; /* Impede que o contentor encolha no telemóvel */
+            margin-right: 20px;
+        }
+        .composite-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            object-fit: contain;
+        }
+        
+        /* As lâminas ocupam 100% do contentor, escalando perfeitamente */
+        .layer-metal, .layer-main { 
+            width: 100%; 
+            height: 100%; 
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); 
+        }
+        
+        .layer-metal { z-index: 1; }
+        .layer-main { z-index: 2; }
+        
+        /* O Lock Chip ocupa ~42% da imagem. Proporção perfeita e responsiva! */
+        .layer-chip { 
+            width: 42%; 
+            height: 42%; 
+            z-index: 3; 
+        }
 
     .combo-info {
         display: flex;
