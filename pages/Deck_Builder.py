@@ -55,48 +55,44 @@ st.markdown("""
     .combo-row:last-child {
         border-bottom: none;
     }
+    
     /* ---- AJUSTE DE IMAGENS BX/UX ---- */
-        .combo-blade-img {
-            width: 110px;
-            height: 110px;
-            flex-shrink: 0; /* Impede que a imagem encolha no telemóvel */
-            object-fit: contain;
-            margin-right: 20px;
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
-        }
-        
-        /* ---- AJUSTE DE IMAGENS CX E CX EXPANDED ---- */
-        .composite-blade-container {
-            position: relative;
-            width: 110px; /* Tem de ser exatamente igual ao da .combo-blade-img */
-            height: 110px; /* Tem de ser exatamente igual ao da .combo-blade-img */
-            flex-shrink: 0; /* Impede que o contentor encolha no telemóvel */
-            margin-right: 20px;
-        }
-        .composite-layer {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            object-fit: contain;
-        }
-        
-        /* As lâminas ocupam 100% do contentor, escalando perfeitamente */
-        .layer-metal, .layer-main { 
-            width: 100%; 
-            height: 100%; 
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); 
-        }
-        
-        .layer-metal { z-index: 1; }
-        .layer-main { z-index: 2; }
-        
-        /* O Lock Chip ocupa ~42% da imagem. Proporção perfeita e responsiva! */
-        .layer-chip { 
-            width: 42%; 
-            height: 42%; 
-            z-index: 3; 
-        }
+    .combo-blade-img {
+        width: 110px;
+        height: 110px;
+        flex-shrink: 0;
+        object-fit: contain;
+        margin-right: 20px;
+        filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
+    }
+    
+    /* ---- AJUSTE DE IMAGENS CX E CX EXPANDED ---- */
+    .composite-blade-container {
+        position: relative;
+        width: 110px;
+        height: 110px;
+        flex-shrink: 0;
+        margin-right: 20px;
+    }
+    .composite-layer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        object-fit: contain;
+    }
+    .layer-metal, .layer-main { 
+        width: 100%; 
+        height: 100%; 
+        filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); 
+    }
+    .layer-metal { z-index: 1; }
+    .layer-main { z-index: 2; }
+    .layer-chip { 
+        width: 42%; 
+        height: 42%; 
+        z-index: 3; 
+    }
 
     .combo-info {
         display: flex;
@@ -231,6 +227,8 @@ parts, images_map = load_builder_data()
 # ==========================================
 if "deck_size" not in st.session_state: st.session_state.deck_size = 3
 if "logged_in_user" not in st.session_state: st.session_state.logged_in_user = None
+if "deck_name" not in st.session_state: st.session_state.deck_name = "" 
+if "user_row" not in st.session_state: st.session_state.user_row = {}
 
 for i in range(4):
     if f"b_c_{i}_type" not in st.session_state: st.session_state[f"b_c_{i}_type"] = "Basic (BX)"
@@ -260,13 +258,14 @@ if st.session_state.logged_in_user is None:
                         user_found = True
                         if str(row["Password"]).strip() == pass_hash:
                             st.session_state.logged_in_user = row["Nome"]
+                            st.session_state.user_row = row
                             st.rerun()
                         else:
                             st.error("❌ Password incorreta!")
                 if not user_found:
                     st.error("❌ Utilizador não encontrado.")
-            except Exception as e: 
-                st.error("⚠️ Erro de ligação à BD:{e}")
+            except Exception as e:
+                st.error(f"⚠️ Erro de ligação à BD: {e}")
 else:
     st.sidebar.success(f"Bem-vindo, {st.session_state.logged_in_user}!")
     if st.sidebar.button("Sair"):
@@ -275,13 +274,27 @@ else:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🗄️ Meus Decks")
-    slot_choice = st.sidebar.selectbox("Escolher Slot:", ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"])
     
-    # --- COLUNAS PARA GRAVAR E CARREGAR ---
+    opcoes_slots = []
+    for s in ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"]:
+        nome_display = s
+        if "user_row" in st.session_state and st.session_state.user_row.get(s):
+            try:
+                slot_data = json.loads(st.session_state.user_row[s])
+                if "name" in slot_data and slot_data["name"].strip():
+                    nome_display = f"{s} - {slot_data['name']}"
+            except: pass
+        opcoes_slots.append(nome_display)
+        
+    slot_choice_display = st.sidebar.selectbox("Escolher Slot:", opcoes_slots)
+    slot_choice = slot_choice_display.split(" - ")[0]
+    
+    deck_name_input = st.sidebar.text_input("Nome do Deck:", value=st.session_state.deck_name, max_chars=22, placeholder="Ex: Torneio Nacional")
+
     col_save, col_load = st.sidebar.columns(2)
     
     if col_save.button("💾 Gravar", use_container_width=True, type="primary"):
-        deck_to_save = {"size": st.session_state.deck_size, "combos": []}
+        deck_to_save = {"size": st.session_state.deck_size, "name": deck_name_input.strip(), "combos": []}
         for i in range(st.session_state.deck_size):
             combo = {
                 "type": st.session_state[f"b_c_{i}_type"],
@@ -304,9 +317,14 @@ else:
                 cell = sheet_contas.find(st.session_state.logged_in_user, in_column=1)
                 col_index = ["Slot_1", "Slot_2", "Slot_3", "Slot_4", "Slot_5"].index(slot_choice) + 3
                 sheet_contas.update_cell(cell.row, col_index, json_string)
+                
+                st.session_state.user_row[slot_choice] = json_string
+                st.session_state.deck_name = deck_name_input.strip()
+                
                 st.sidebar.success(f"Gravado!")
-            except:
-                st.sidebar.error("Erro!")
+                st.rerun()
+            except Exception as e:
+                st.sidebar.error(f"Erro: {e}")
 
     if col_load.button("📥 Carregar", use_container_width=True):
         with st.spinner("A carregar..."):
@@ -320,6 +338,7 @@ else:
                 if raw_data and raw_data.startswith("{"):
                     loaded_deck = json.loads(raw_data)
                     st.session_state.deck_size = loaded_deck.get("size", 3)
+                    st.session_state.deck_name = loaded_deck.get("name", "")
                     for i, c in enumerate(loaded_deck["combos"]):
                         st.session_state[f"b_c_{i}_type"] = c.get("type", "Basic (BX)")
                         st.session_state[f"b_c_{i}_spin"] = c.get("spin", "Right Spin")
@@ -334,13 +353,14 @@ else:
                     st.rerun()
                 else:
                     st.sidebar.warning("Slot vazio!")
-            except:
-                st.sidebar.error("Erro!")
+            except Exception as e:
+                st.sidebar.error(f"Erro: {e}")
 
 # ==========================================
 # RANDOMIZER E UTILIDADES
 # ==========================================
 def clear_deck():
+    st.session_state.deck_name = ""
     for i in range(4):
         st.session_state[f"b_c_{i}_type"] = "Basic (BX)"
         st.session_state[f"b_c_{i}_spin"] = "Right Spin"
@@ -350,6 +370,7 @@ def clear_deck():
 
 def randomize_deck():
     st.session_state.deck_size = 3
+    st.session_state.deck_name = ""
     used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
     types = ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"]
     spins = ["Right Spin", "Left Spin"]
@@ -585,5 +606,6 @@ if not missing_parts and not has_duplicates:
     for c in combo_data_for_visual:
         html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
     
-    visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">DECK SUMMARY</div>{html_rows}</div>'
+    display_title = st.session_state.deck_name.upper() if st.session_state.get("deck_name", "").strip() else "DECK SUMMARY"
+    visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">{display_title}</div>{html_rows}</div>'
     st.markdown(visual_report_html, unsafe_allow_html=True)
