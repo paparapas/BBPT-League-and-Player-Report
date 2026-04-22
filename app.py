@@ -8,7 +8,7 @@ import re
 # 1. Configuração da Página
 st.set_page_config(
     page_title="BBPT Hub", 
-    page_icon="logo.png",  # <-- ESTA É A MAGIA
+    page_icon="logo.png",
     layout="wide"
 )
 
@@ -82,7 +82,7 @@ page = st.sidebar.radio("Navegação:", [
 st.sidebar.caption(f"Última Atualização: {db['last_updated']}")
 
 # ==========================================
-# FUNÇÃO REUTILIZÁVEL PARA RENDERIZAR MÉTRICAS AVANÇADAS
+# FUNÇÕES REUTILIZÁVEIS
 # ==========================================
 def render_advanced_metrics(metrics, league_mode=True):
     title_suffix = "League" if league_mode else "Global Rankings"
@@ -109,12 +109,7 @@ def render_advanced_metrics(metrics, league_mode=True):
     * **Baixa (< 5.0 Pts):** Meta de Defesa/Stamina (Jogos longos, muitas rondas decididas por Spin Finishes de 1 ponto. Ex: 4-3, 5-4)
     """)
 
-# ==========================================
-# FUNÇÃO PARA RENDERIZAR PÁGINAS DE LIGA
-# ==========================================
 def render_league_page(league_name, league_key, comm_file):
-    
-    # 1. Detetar qual é a liga para escolher a imagem certa
     if "versus" in league_name.lower() or "versus" in league_key.lower():
         nome_ficheiro = "versus.png"
     else:
@@ -122,7 +117,6 @@ def render_league_page(league_name, league_key, comm_file):
         
     img_path = nome_ficheiro if os.path.exists(nome_ficheiro) else f"../{nome_ficheiro}"
     
-    # 2. Renderizar o cabeçalho com a imagem escolhida e LETRA MAIOR
     if os.path.exists(img_path):
         with open(img_path, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode()
@@ -137,26 +131,20 @@ def render_league_page(league_name, league_key, comm_file):
             unsafe_allow_html=True
         )
     else:
-        # Plano B: volta ao emoji se a imagem não existir, mas também com letra gigante
         st.markdown(f"<h1 style='font-size: 3.5rem;'>🏆 {league_name}</h1>", unsafe_allow_html=True)
     
-    # ==========================================
-    # A MAGIA DA LIGA
-    # ==========================================
     comunicado = load_communications(comm_file)
     if comunicado:
         st.info(f"📢 **Quadro de Avisos da Organização:**\n\n{comunicado}")
     
     data = db.get(league_key)
     
-    # Nova chave "standings_top8"
     if not data or not data.get("standings_top8"):
         st.warning(f"Ainda não há dados de partidas disponíveis para a {league_name}.")
         return
 
     st.subheader("📊 League Standings")
     
-    # A Switch (Toggle) 
     mostrar_totais = st.toggle("Mostrar Todas as Participações (Pontuação Total)")
     
     if mostrar_totais:
@@ -184,6 +172,25 @@ def render_league_page(league_name, league_key, comm_file):
             df_audit.index.name = "#"
         st.dataframe(df_audit, use_container_width=True)
 
+def make_img_button(img_file, link_url, title):
+    # Função auxiliar para criar botões visuais a partir de imagens locais
+    if os.path.exists(img_file):
+        with open(img_file, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        img_src = f"data:image/png;base64,{b64}"
+    else:
+        # Imagem de substituição caso ainda não tenhas feito upload do ficheiro real
+        img_src = f"https://via.placeholder.com/300x150/1f2333/ff4b4b?text={title.replace(' ', '+')}"
+        
+    return f"""
+    <a href="{link_url}" target="_blank" style="text-decoration: none;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="{img_src}" style="width: 100%; border-radius: 12px; box-shadow: 0px 4px 8px rgba(0,0,0,0.4); border: 2px solid #ff4b4b;">
+            <div style="color: white; font-weight: 800; font-size: 1.2rem; margin-top: 8px; text-transform: uppercase;">{title}</div>
+        </div>
+    </a>
+    """
+
 # ==========================================
 # RENDERIZAÇÃO DA PÁGINA ESCOLHIDA
 # ==========================================
@@ -194,50 +201,45 @@ if page == "🏠 Página Inicial":
         st.image("logo.png", width=120)
     with col_titulo:
         st.markdown("<h1 style='font-size: 3.5rem; margin-bottom: 0;'>BBPT Hub 🌀</h1>", unsafe_allow_html=True)
-        st.markdown("### O centro oficial de dados e estatísticas competitivas de Beyblade em Portugal.")
+        st.markdown("### O centro oficial de dados, ferramentas e estatísticas competitivas de Beyblade.")
     
     st.divider()
     
-    # --- DESTAQUES / DASHBOARD ---
-    c1, c2 = st.columns([2, 1])
+    # --- FERRAMENTAS OFICIAIS (BOTÕES DE IMAGEM) ---
+    st.subheader("🛠️ Ferramentas Oficiais")
+    st.markdown("Acede rapidamente aos nossos módulos principais:")
     
+    # Substitui os "#" pelos URLs reais das tuas outras apps Streamlit
+    c_btn1, c_btn2, c_btn3 = st.columns(3)
+    with c_btn1:
+        st.markdown(make_img_button("btn_deck_check.png", "#", "Deck Check"), unsafe_allow_html=True)
+    with c_btn2:
+        st.markdown(make_img_button("btn_deck_builder.png", "#", "Deck Builder"), unsafe_allow_html=True)
+    with c_btn3:
+        st.markdown(make_img_button("btn_battle_logger.png", "#", "Battle Logger"), unsafe_allow_html=True)
+        
+    st.divider()
+    
+    # --- DASHBOARD (Mini-widget Top 1 Global e Avisos) ---
+    c1, c2 = st.columns([1, 1])
     with c1:
-        st.subheader("🏆 Bem-vindo ao Circuito")
-        st.markdown("""
-        Explora o menu lateral para acederes aos **Rankings Globais**, analisares o teu **Blader Profile** com a ajuda do nosso AI Coach, ou consultares as tabelas classificativas atuais das Ligas Critical e Versus.
-        
-        Não te esqueças de utilizar o nosso **Deck Builder** e de submeter a tua equipa no **Deck Check** oficial antes do início de cada torneio!
-        """)
-        
-        st.write("")
-        st.subheader("💰 Transparência do Fundo da Liga")
-        fundo_txt = load_communications("fundoLiga.txt")
-        if fundo_txt:
-            st.info(fundo_txt)
-        else:
-            st.info("""
-            **Pote de Prémios (Previsão Atual):** Aguardar atualização...
-            
-            Os valores previsionais e correntes do pote de prémios, juntamente com a análise de cenários, serão aqui atualizados regularmente para garantir uma total transparência. No final da liga, uma percentagem deste fundo está reservada para oferecer um lanche a todos os participantes!
-            """)
-
-    with c2:
         with st.container(border=True):
-            st.markdown("<h3 style='text-align: center;'>👑 Global #1</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>👑 Ranking Global: #1 Atual</h3>", unsafe_allow_html=True)
             try:
                 top1 = db['global_versus']['rankings'][0]
-                st.markdown(f"<h2 style='text-align: center; color: #ff4b4b; margin:0;'>{top1['Player']}</h2>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center; color: gray;'>{top1['Elo']} ELO</p>", unsafe_allow_html=True)
+                st.markdown(f"<h1 style='text-align: center; color: #ff4b4b; margin:0; font-size: 4rem;'>{top1['Player']}</h1>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align: center; color: gray; font-size: 1.5rem;'>{top1['Elo']} ELO</p>", unsafe_allow_html=True)
             except:
                 st.markdown("<p style='text-align: center;'>A calcular rankings...</p>", unsafe_allow_html=True)
                 
+    with c2:
         with st.container(border=True):
             st.markdown("#### 📢 Últimos Avisos")
             avisos = load_communications("comunicacoesGerais.txt")
             if avisos:
                 st.write(avisos)
             else:
-                st.caption("Sem avisos de momento. Prepara os teus combos!")
+                st.info("Sem avisos de momento. Aproveita para construir os teus decks!")
 
 elif page == "Liga Critical":
     render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
@@ -276,7 +278,7 @@ elif page == "Rankings Globais":
     if comunicado:
         st.info(f"📢 **Quadro de Avisos Global:**\n\n{comunicado}")
         
-    st.markdown("O sistema oficial de Power Rating (ELO) baseado em todo o historial Ad-Hoc.")
+    st.markdown("O sistema de Power Rating (ELO) baseado em todo o historial Ad-Hoc.")
     df_rankings = pd.DataFrame(db['global_versus']['rankings'])
     if not df_rankings.empty:
         df_rankings.set_index('Rank', inplace=True)
@@ -288,7 +290,7 @@ elif page == "Rankings Globais":
 
     st.divider()
     st.subheader("📋 Audit Log: Torneios Globais")
-    st.markdown("Lista de todos os torneios que estão a alimentar o Power Rating Global e os Perfis Ad-Hoc.")
+    st.markdown("Lista de todos os torneios que estão a alimentar o Power Rating Global e os Perfis.")
     
     global_audit = db['global_versus'].get('audit_log', [])
     if global_audit:
@@ -298,7 +300,7 @@ elif page == "Rankings Globais":
             df_global_audit.index.name = "#"
         st.dataframe(df_global_audit, use_container_width=True)
     else:
-        st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global (vê a dica do gerador para o ativar).")
+        st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global.")
 
 elif page == "Ad-Hoc: Blader Profile":
     st.title("👤 Blader Intelligence Profile")
@@ -498,7 +500,7 @@ elif page == "Ad-Hoc: Blader Profile":
                 df_global_audit.index.name = "#"
             st.dataframe(df_global_audit, use_container_width=True)
         else:
-            st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global (lembra-te de atualizar o gerador bbpt_admin_sync.py).")
+            st.warning("⚠️ O Log de Torneios ainda não foi exportado para a base de dados global.")
 
 elif page == "Contactos & Equipa":
     st.title("📞 Contactos & Organização")
