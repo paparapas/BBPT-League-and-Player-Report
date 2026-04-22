@@ -212,11 +212,11 @@ if page == "🏠 Página Inicial":
     # Substitui os "#" pelos URLs reais das tuas outras apps Streamlit
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     with c_btn1:
-        st.markdown(make_img_button("btn_deck_check.png", "#", "Deck Check"), unsafe_allow_html=True)
+        st.markdown(make_img_button("btn_deck_check.png", "https://bbpt-league-and-player-report-mhi67nu4yvzodwxzcrkor8.streamlit.app/Deck_Check", "Deck Check"), unsafe_allow_html=True)
     with c_btn2:
-        st.markdown(make_img_button("btn_deck_builder.png", "#", "Deck Builder"), unsafe_allow_html=True)
+        st.markdown(make_img_button("btn_deck_builder.png", "https://bbpt-league-and-player-report-mhi67nu4yvzodwxzcrkor8.streamlit.app/Deck_Builder", "Deck Builder"), unsafe_allow_html=True)
     with c_btn3:
-        st.markdown(make_img_button("btn_battle_logger.png", "#", "Battle Logger"), unsafe_allow_html=True)
+        st.markdown(make_img_button("btn_battle_logger.png", "https://bbpt-league-and-player-report-mhi67nu4yvzodwxzcrkor8.streamlit.app/Battle_Logger", "Battle Logger"), unsafe_allow_html=True)
         
     st.divider()
     
