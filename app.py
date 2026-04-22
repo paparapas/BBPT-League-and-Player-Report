@@ -200,7 +200,7 @@ if page == "🏠 Página Inicial":
     with col_logo:
         st.image("logo.png", width=120)
     with col_titulo:
-        st.markdown("<h1 style='font-size: 3.5rem; margin-bottom: 0;'>BBPT Hub 🌀</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size: 3.5rem; margin-bottom: 0;'>BBPT Hub</h1>", unsafe_allow_html=True)
         st.markdown("### O centro oficial de dados, ferramentas e estatísticas competitivas de Beyblade.")
     
     st.divider()
