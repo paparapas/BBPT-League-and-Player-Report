@@ -80,16 +80,16 @@ with col_dir:
 
     cartazes = [
         {
-            "nome": " (terminado) Torneio Critical Hit (18/04) - Formato BP - https://challonge.com/tournaments/signup/lZfxXYurm4#/signup/x187klm9fc7",
+            "nome": " (terminado) Torneio Critical Hit (02/05) - Liga Critical X - Link do Challonge ainda não disponivel. Fica atento!!",
+            "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400296865862/Torneio_Critical_Hit_31_01_copy_2.png?ex=69f3bc62&is=69f26ae2&hm=800655eee5dee51c31d8b43a141ca9e9f0d6390f5609a6887a0d4e4bfaea6180&=&format=webp&quality=lossless"
+        },
+        {
+            "nome": " (terminado) Torneio Versus Game Center (XX/XX) - Liga Versus X -  Não existe nenhum torneio programado para esta loja.",
             "url": ""
         },
         {
-            "nome": " (terminado) Torneio Versus Game Center (19/04) - Liga Versus X -  https://challonge.com/tournaments/signup/Vny1pnj2ym#/signup/s8h0dvhezu",
-            "url": ""
-        },
-        {
-            "nome": "Torneio Mercadia (26/04) - https://challonge.com/tournaments/signup/gjOWhelTeM#/signup/arhq12h2cgq",
-            "url": "https://cdn.discordapp.com/attachments/1326607636841369630/1496529852872921179/Torneio_Critical_Hit_31_01_copy_1.png?ex=69ea3789&is=69e8e609&hm=4794afb3a529a1a0264819d11a571bf661b2b038bcc1b0c9e9da1801ffc47ead&"
+            "nome": " (terminado) Torneio Mercadia (03/05) - Não existe nenhum torneio programado para esta loja neste fim de semana de 02/05/2026",
+            "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400716427265/Torneio_Mercadia_08_02_2.png?ex=69f3bc62&is=69f26ae2&hm=6dc7c0e8b69e6289fad54c1bec5b2cf3683138a6d4f368c30da589fd5800d5c3&=&format=webp&quality=lossless"
         }
     ]
     
