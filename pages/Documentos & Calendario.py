@@ -80,7 +80,7 @@ with col_dir:
 
     cartazes = [
         {
-            "nome": " Torneio Critical Hit (02/05/2026) - Liga Critical X - Link do Challonge ainda não disponivel. Fica atento!!",
+            "nome": " Torneio Critical Hit (02/05/2026) - Liga Critical X - Link do Challonge: https://challonge.com/tournaments/signup/2avaVCsl6D#/signup/x9e1dgv8swf.",
             "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400296865862/Torneio_Critical_Hit_31_01_copy_2.png?ex=69f3bc62&is=69f26ae2&hm=800655eee5dee51c31d8b43a141ca9e9f0d6390f5609a6887a0d4e4bfaea6180&=&format=webp&quality=lossless"
         },
 
