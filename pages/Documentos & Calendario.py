@@ -80,7 +80,7 @@ with col_dir:
 
     cartazes = [
         {
-            "nome": " (terminado) Torneio Critical Hit (02/05) - Liga Critical X - Link do Challonge ainda não disponivel. Fica atento!!",
+            "nome": " Torneio Critical Hit (02/05) - Liga Critical X - Link do Challonge ainda não disponivel. Fica atento!!",
             "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400296865862/Torneio_Critical_Hit_31_01_copy_2.png?ex=69f3bc62&is=69f26ae2&hm=800655eee5dee51c31d8b43a141ca9e9f0d6390f5609a6887a0d4e4bfaea6180&=&format=webp&quality=lossless"
         },
         {
@@ -88,7 +88,7 @@ with col_dir:
             "url": ""
         },
         {
-            "nome": " (terminado) Torneio Mercadia (03/05) - Não existe nenhum torneio programado para esta loja neste fim de semana de 02/05/2026",
+            "nome": " Torneio Mercadia (03/05) - Não existe nenhum torneio programado para esta loja neste fim de semana de 02/05/2026",
             "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400716427265/Torneio_Mercadia_08_02_2.png?ex=69f3bc62&is=69f26ae2&hm=6dc7c0e8b69e6289fad54c1bec5b2cf3683138a6d4f368c30da589fd5800d5c3&=&format=webp&quality=lossless"
         }
     ]
