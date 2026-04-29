@@ -89,7 +89,7 @@ with col_dir:
             "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400716427265/Torneio_Mercadia_08_02_2.png?ex=69f3bc62&is=69f26ae2&hm=6dc7c0e8b69e6289fad54c1bec5b2cf3683138a6d4f368c30da589fd5800d5c3&=&format=webp&quality=lossless"
         },
         {
-            "nome": " (Upcoming) Torneio Fénix Negra (XX/XX) - Liga Fénix Negra - Em breve torneio liga fenix negra. Fica atento!!",
+            "nome": " (Upcoming) Liga Fénix Negra - Em breve! Fica atento!!",
             "url": "https://cdn.discordapp.com/attachments/1334224353142771815/1499158726777503744/image.png?ex=69f3c7dd&is=69f2765d&hm=73494e5b2ff94facd328c2a3fbadca90d1c545a6de8cb08e844bef840a33f505&"
         },
     ]
