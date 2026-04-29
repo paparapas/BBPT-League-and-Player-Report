@@ -83,14 +83,15 @@ with col_dir:
             "nome": " Torneio Critical Hit (02/05/2026) - Liga Critical X - Link do Challonge ainda não disponivel. Fica atento!!",
             "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400296865862/Torneio_Critical_Hit_31_01_copy_2.png?ex=69f3bc62&is=69f26ae2&hm=800655eee5dee51c31d8b43a141ca9e9f0d6390f5609a6887a0d4e4bfaea6180&=&format=webp&quality=lossless"
         },
-        {
-            "nome": " (terminado) Torneio Versus Game Center (XX/XX) - Liga Versus X -  Não existe nenhum torneio programado para esta loja.",
-            "url": ""
-        },
+
         {
             "nome": " Torneio Mercadia (03/05/2026) - Mercadia Showdown - Link do Challonge ainda não disponivel. Fica atento!!",
             "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400716427265/Torneio_Mercadia_08_02_2.png?ex=69f3bc62&is=69f26ae2&hm=6dc7c0e8b69e6289fad54c1bec5b2cf3683138a6d4f368c30da589fd5800d5c3&=&format=webp&quality=lossless"
-        }
+        },
+        {
+            "nome": " (Upcoming) Torneio Fénix Negra (XX/XX) - Liga Fénix Negra - Em breve torneio liga fenix negra. Fica atento!!",
+            "url": "https://cdn.discordapp.com/attachments/1334224353142771815/1499158726777503744/image.png?ex=69f3c7dd&is=69f2765d&hm=73494e5b2ff94facd328c2a3fbadca90d1c545a6de8cb08e844bef840a33f505&"
+        },
     ]
     
     if cartazes:
