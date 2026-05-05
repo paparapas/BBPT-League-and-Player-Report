@@ -218,6 +218,7 @@ def load_builder_data():
         return {
             "bx_blades": sorted(list(set(bx_list))),
             "ux_blades": sorted(list(set(ux_list))),
+            "ux_expanded_blades": parts_dict.get('Blades UX-Expanded', []), # A NOVA ABA UX EXPANDED
             "cx_blades": parts_dict.get('Blades CX', []),
             "ratchets": parts_dict.get('Ratchets', []),
             "bits": parts_dict.get('Bits', []), 
@@ -228,7 +229,7 @@ def load_builder_data():
         }, images_dict, spin_dict
     except Exception as e:
         st.error(f"Erro ao carregar ficheiro Excel: {e}")
-        return {k: [] for k in ["bx_blades", "ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}, {}
+        return {k: [] for k in ["bx_blades", "ux_blades", "ux_expanded_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}, {}
 
 parts, images_map, spin_map = load_builder_data()
 
@@ -382,7 +383,7 @@ def randomize_deck():
     st.session_state.deck_size = 3
     st.session_state.deck_name = ""
     used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set(), set(), set(), set(), set(), set()
-    types = ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"]
+    types = ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)", "UX Expanded"]
     b_types = ["Attack", "Defense", "Stamina", "Balance"]
     
     def pick_unique(pool, used_set):
@@ -401,25 +402,34 @@ def randomize_deck():
             
         if ctype == "Basic (BX)":
             st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts["bx_blades"], used_blades)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
             st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
+            is_int = st.session_state[f"b_c_{i}_bit"] in ["Turbo", "Operate"]
+            st.session_state[f"b_c_{i}_ratchet"] = "Integrada" if is_int else pick_unique(parts["ratchets"], used_ratchets)
         elif ctype == "Unique (UX)":
             st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts["ux_blades"], used_blades)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
             st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
+            is_int = st.session_state[f"b_c_{i}_bit"] in ["Turbo", "Operate"]
+            st.session_state[f"b_c_{i}_ratchet"] = "Integrada" if is_int else pick_unique(parts["ratchets"], used_ratchets)
         elif ctype == "Custom (CX)":
             st.session_state[f"b_c_{i}_lock_chip"] = pick_unique(parts["lock_chips"], used_chips)
             st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts["cx_blades"], used_blades)
             st.session_state[f"b_c_{i}_assist_blade"] = pick_unique(parts["assist_blades"], used_assist)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
             st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
-        else:
+            is_int = st.session_state[f"b_c_{i}_bit"] in ["Turbo", "Operate"]
+            st.session_state[f"b_c_{i}_ratchet"] = "Integrada" if is_int else pick_unique(parts["ratchets"], used_ratchets)
+        elif ctype == "Expand (CXE)":
             st.session_state[f"b_c_{i}_lock_chip"] = pick_unique(parts["lock_chips"], used_chips)
             st.session_state[f"b_c_{i}_metal_blade"] = pick_unique(parts["metal_blades"], used_metal)
             st.session_state[f"b_c_{i}_over_blade"] = pick_unique(parts["over_blades"], used_blades)
             st.session_state[f"b_c_{i}_assist_blade"] = pick_unique(parts["assist_blades"], used_assist)
-            st.session_state[f"b_c_{i}_ratchet"] = pick_unique(parts["ratchets"], used_ratchets)
             st.session_state[f"b_c_{i}_bit"] = pick_unique(parts["bits"], used_bits)
+            is_int = st.session_state[f"b_c_{i}_bit"] in ["Turbo", "Operate"]
+            st.session_state[f"b_c_{i}_ratchet"] = "Integrada" if is_int else pick_unique(parts["ratchets"], used_ratchets)
+        elif ctype == "UX Expanded":
+            st.session_state[f"b_c_{i}_main_blade"] = pick_unique(parts.get("ux_expanded_blades", []), used_blades)
+            bits_validos = [b for b in parts["bits"] if b not in ["Turbo", "Operate"]]
+            st.session_state[f"b_c_{i}_bit"] = pick_unique(bits_validos, used_bits)
+            st.session_state[f"b_c_{i}_ratchet"] = "Integrada na Blade"
 
 # ==========================================
 # TÍTULO E INTERFACE PRINCIPAL
@@ -453,35 +463,37 @@ for i in range(st.session_state.deck_size):
         with c_title:
             st.markdown(f"#### 🌀 Combo {i+1}")
         with c_type:
-            ct = st.selectbox("Linha", ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)"], key=f"b_c_{i}_type", label_visibility="collapsed")
+            # 1. NOVO TIPO "UX EXPANDED" INSERIDO AQUI
+            ct = st.selectbox("Linha", ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)", "UX Expanded"], key=f"b_c_{i}_type", label_visibility="collapsed")
             if ct == "Expand (CXE)":
                 st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+            elif ct == "UX Expanded":
+                st.markdown(f"<img src='{LINE_LOGOS['Unique (UX)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
             else:
                 st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
         with c_spin:
-            # Lógica Automática do Spin
-            if ct == "Expand (CXE)":
-                current_blade = st.session_state.get(f"b_c_{i}_over_blade", "--")
-            else:
-                current_blade = st.session_state.get(f"b_c_{i}_main_blade", "--")
-                
+            current_blade = st.session_state.get(f"b_c_{i}_over_blade", "--") if "Expand" in ct else st.session_state.get(f"b_c_{i}_main_blade", "--")
             sp = spin_map.get(current_blade, "Right Spin")
             st.session_state[f"b_c_{i}_spin"] = sp
-            
             st.markdown(f"<img src='{ICONS[sp]}' class='light-backdrop-icon' style='height: 24px; margin-top: 5px;' title='{sp}'>", unsafe_allow_html=True)
-            
         with c_bt:
             bt = st.selectbox("Tipo", ["Attack", "Defense", "Stamina", "Balance"], key=f"b_c_{i}_bt", label_visibility="collapsed")
             st.markdown(f"<img src='{ICONS[bt]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
             
         st.write("") 
         
+        # 2. MAGIA DAS BITS INTEGRADAS
+        is_int_bit = st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]
+        ratchet_opts = ["Integrada"] if is_int_bit else ["--"] + parts["ratchets"]
+        
         if ct in ["Basic (BX)", "Unique (UX)"]:
             blade_list = parts["bx_blades"] if ct == "Basic (BX)" else parts["ux_blades"]
             c1, c2, c3 = st.columns([2, 1, 1])
             c1.selectbox("Blade", ["--"]+blade_list, key=f"b_c_{i}_main_blade")
-            c2.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"b_c_{i}_ratchet")
             c3.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
+            # A Ratchet fica bloqueada se tiver bit "Turbo" ou "Operate"
+            c2.selectbox("Ratchet", ratchet_opts, key=f"b_c_{i}_ratchet", disabled=is_int_bit)
+            
             g1, g2, g3 = st.columns(3)
             with g1: render_part_card(st.session_state[f"b_c_{i}_main_blade"], "Blade")
             with g2: render_part_card(st.session_state[f"b_c_{i}_ratchet"], "Ratchet")
@@ -492,8 +504,9 @@ for i in range(st.session_state.deck_size):
             c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"b_c_{i}_lock_chip")
             c2.selectbox("Main", ["--"]+parts["cx_blades"], key=f"b_c_{i}_main_blade")
             c3.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"b_c_{i}_assist_blade")
-            c4.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"b_c_{i}_ratchet")
             c5.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
+            c4.selectbox("Ratchet", ratchet_opts, key=f"b_c_{i}_ratchet", disabled=is_int_bit)
+            
             g1, g2, g3, g4, g5 = st.columns(5)
             with g1: render_part_card(st.session_state[f"b_c_{i}_lock_chip"], "Lock Chip")
             with g2: render_part_card(st.session_state[f"b_c_{i}_main_blade"], "Main Blade")
@@ -501,14 +514,15 @@ for i in range(st.session_state.deck_size):
             with g4: render_part_card(st.session_state[f"b_c_{i}_ratchet"], "Ratchet")
             with g5: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
             
-        else: # Expand (CXE)
+        elif ct == "Expand (CXE)":
             c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2, 2, 2, 1.2, 1.2])
             c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"b_c_{i}_lock_chip")
             c2.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"b_c_{i}_metal_blade")
             c3.selectbox("Over", ["--"]+parts["over_blades"], key=f"b_c_{i}_over_blade")
             c4.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"b_c_{i}_assist_blade")
-            c5.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"b_c_{i}_ratchet")
             c6.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
+            c5.selectbox("Ratchet", ratchet_opts, key=f"b_c_{i}_ratchet", disabled=is_int_bit)
+            
             g1, g2, g3, g4, g5, g6 = st.columns(6)
             with g1: render_part_card(st.session_state[f"b_c_{i}_lock_chip"], "Lock Chip")
             with g2: render_part_card(st.session_state[f"b_c_{i}_metal_blade"], "Metal Blade")
@@ -516,6 +530,22 @@ for i in range(st.session_state.deck_size):
             with g4: render_part_card(st.session_state[f"b_c_{i}_assist_blade"], "Assist Blade")
             with g5: render_part_card(st.session_state[f"b_c_{i}_ratchet"], "Ratchet")
             with g6: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
+
+        elif ct == "UX Expanded":
+            # 3. NOVO LAYOUT DO UX EXPANDED
+            c1, c2 = st.columns([2, 1])
+            c1.selectbox("Blade", ["--"]+parts.get("ux_expanded_blades", []), key=f"b_c_{i}_main_blade")
+            
+            # Bloqueia a seleção de bits integradas para evitar duplo integrado
+            bits_validos = [b for b in parts["bits"] if b not in ["Turbo", "Operate"]]
+            c2.selectbox("Bit", ["--"]+bits_validos, key=f"b_c_{i}_bit")
+            
+            # Força Ratchet a integrada e esconde a caixa visualmente
+            st.session_state[f"b_c_{i}_ratchet"] = "Integrada na Blade" 
+            
+            g1, g2 = st.columns(2)
+            with g1: render_part_card(st.session_state[f"b_c_{i}_main_blade"], "Blade")
+            with g2: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
 
 st.divider()
 
@@ -527,51 +557,71 @@ used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set
 deck_text_export = "🛡️ **O Meu Deck BBPT**\n"
 combo_data_for_visual = []
 
+# 4. VALIDAÇÃO DE PEÇAS A ATUALIZAR AS NOVAS REGRAS
 for i in range(st.session_state.deck_size):
     ct = st.session_state[f"b_c_{i}_type"]
     sp = st.session_state[f"b_c_{i}_spin"]
     bt = st.session_state[f"b_c_{i}_bt"]
     
-    ks = ["main_blade", "ratchet", "bit"] if ct in ["Basic (BX)", "Unique (UX)"] else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "Custom (CX)" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
+    ks = ["main_blade", "ratchet", "bit"] if ct in ["Basic (BX)", "Unique (UX)", "UX Expanded"] else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "Custom (CX)" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
     
     combo_str_parts = []
     for k in ks:
-        v = st.session_state[f"b_c_{i}_{k}"]
-        combo_str_parts.append(v)
+        v = st.session_state.get(f"b_c_{i}_{k}", "--")
+        
+        # Garante que a variável gravada e avaliada é a correta
+        if ct == "UX Expanded" and k == "ratchet": 
+            v = "Integrada na Blade"
+        elif k == "ratchet" and st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]: 
+            v = "Integrada"
+            
+        if v != "Integrada na Blade": # Esconde a palavra gigante da imagem final
+            combo_str_parts.append(v)
+            
         if v == "--": missing_parts = True
         
     deck_text_export += f"🔹 **Combo {i+1}:** [{sp}] [{bt}] {' | '.join(combo_str_parts)}\n"
 
     if not missing_parts and not has_duplicates:
-        b = st.session_state[f"b_c_{i}_over_blade"] if "Expand" in ct else st.session_state.get(f"b_c_{i}_main_blade", "--")
+        b = st.session_state[f"b_c_{i}_over_blade"] if "Expand" in ct and ct != "UX Expanded" else st.session_state.get(f"b_c_{i}_main_blade", "--")
         if b != '--':
             base = re.sub(r'\s*\(.*?\)\s*', '', str(b)).strip().lower()
             if base in used_blades: has_duplicates = True; dup_error_msg = f"A Blade '{b}' está repetida!"
             used_blades.add(base)
+            
+        # Avalia duplicados da Ratchet, a menos que seja integrada
         r = st.session_state.get(f"b_c_{i}_ratchet", '--')
-        if r != '--':
+        if ct == "UX Expanded": r = "Integrada na Blade"
+        elif st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]: r = "Integrada"
+        
+        if r != '--' and "Integrada" not in r:
             if r in used_ratchets: has_duplicates = True; dup_error_msg = f"A Ratchet '{r}' está repetida!"
             used_ratchets.add(r)
+            
         bt_val = st.session_state.get(f"b_c_{i}_bit", '--')
         if bt_val != '--':
             if bt_val in used_bits: has_duplicates = True; dup_error_msg = f"A Bit '{bt_val}' está repetida!"
             used_bits.add(bt_val)
+            
         a = st.session_state.get(f"b_c_{i}_assist_blade", '--')
         if a != '--':
             if a in used_assist: has_duplicates = True; dup_error_msg = f"A Assist Blade '{a}' está repetida!"
             used_assist.add(a)
+            
         m = st.session_state.get(f"b_c_{i}_metal_blade", '--')
         if m != '--':
             if m in used_metal: has_duplicates = True; dup_error_msg = f"A Metal Blade '{m}' está repetida!"
             used_metal.add(m)
+            
         c = st.session_state.get(f"b_c_{i}_lock_chip", '--')
         if c != '--':
             c_low = c.strip().lower()
             if c_low in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{c}' está repetido!"
             used_chips.add(c_low)
 
+        # 5. GERADOR DO SUMMARY VISUAL COM A UX EXPANDED
         img_html = ""
-        if ct in ["Basic (BX)", "Unique (UX)"]:
+        if ct in ["Basic (BX)", "Unique (UX)", "UX Expanded"]:
             hero_blade = st.session_state[f"b_c_{i}_main_blade"]
             url_blade = images_map.get(hero_blade, "https://via.placeholder.com/150")
             img_html = f'<img class="combo-blade-img" src="{url_blade}" alt="Blade" referrerpolicy="no-referrer">'
@@ -593,8 +643,9 @@ for i in range(st.session_state.deck_size):
         logos_html = ""
         if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic">'
         if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique">'
+        if "UX Expanded" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique Expanded">'
         if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom">'
-        if "Expand" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
+        if "Expand" in ct and ct != "UX Expanded": logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
 
         combo_data_for_visual.append({
             "image_html": img_html,
@@ -621,7 +672,7 @@ with col_export:
 if not missing_parts and not has_duplicates:
     html_rows = ""
     for c in combo_data_for_visual:
-        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
+        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class=\"combo-icon light-backdrop-icon\" src=\"{c[\"spin\"]}\" alt=\"Spin\"></div><div class=\"combo-bottom-line\"><img class=\"combo-icon\" src=\"{c[\"type\"]}\" alt=\"Type\"><span class=\"combo-text\">{c[\"name\"]}</span></div></div></div>'
     
     display_title = st.session_state.deck_name.upper() if st.session_state.get("deck_name", "").strip() else "DECK SUMMARY"
     visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">{display_title}</div>{html_rows}</div>'
