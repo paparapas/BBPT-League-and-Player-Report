@@ -21,6 +21,7 @@ from fpdf import FPDF
 # ==========================================
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s [%(levelname)s] %(message)s')
 
+# Ficheiro Único (Com Metadados e Imagens)
 DATASET_PARTS = "Dataset_BeybladeParts_Final_Images.xlsx"
 DB_MASTER = "bbpt_master_db.json"
 ADMIN_PASSWORD = "bbpt-paparapas" 
@@ -40,7 +41,6 @@ def get_sheet_id():
     return url.split("/d/")[1].split("/")[0] if "/d/" in url else url
 
 # --- LEITURA COM CACHE ---
-# Aumentado para 5 minutos para evitar Rate Limits da Google
 @st.cache_data(ttl=300)
 def get_event_status_cached():
     try:
@@ -55,7 +55,6 @@ def get_event_status_cached():
         return {"is_open": False, "event_name": ""}
     except: return {"is_open": False, "event_name": ""}
 
-# Aumentado para 2 minutos
 @st.cache_data(ttl=120)
 def get_all_records_cached(event_name):
     try:
@@ -68,7 +67,6 @@ def get_all_records_cached(event_name):
         return [r for r in ws.get_all_records() if r.get("Event_Name") == event_name]
     except: return []
 
-# Aumentado para 10 minutos
 @st.cache_data(ttl=600)
 def get_past_events_list():
     try:
@@ -103,6 +101,7 @@ def save_submission_cloud(player_name, combos, img_file, event_name):
     c_strs = []
     for c in combos:
         if c['type'] == 'Standard (BX / UX)': c_strs.append(f"{c.get('main_blade')} | {c.get('ratchet')} | {c.get('bit')}")
+        elif c['type'] == 'UX Expanded': c_strs.append(f"{c.get('main_blade')} | {c.get('bit')}")
         elif c['type'] == 'CX': c_strs.append(f"{c.get('lock_chip')} | {c.get('main_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
         else: c_strs.append(f"{c.get('lock_chip')} | {c.get('metal_blade')} | {c.get('over_blade')} | {c.get('assist_blade')} | {c.get('ratchet')} | {c.get('bit')}")
     while len(c_strs) < 4: c_strs.append("")
@@ -140,7 +139,6 @@ def load_parts():
             clean_list = []
             colunas_a_ignorar = ['Spin Direction', 'Linhagem']
             
-            # Para BITS, mantemos a lógica mapeamento de aliases
             if sheet_name == 'Bits':
                 for _, row in df.iterrows():
                     main_p = str(row.iloc[0]).strip()
@@ -155,8 +153,6 @@ def load_parts():
                                 if not val_str.startswith("http"):
                                     for sub in val_str.split(','):
                                         if sub.strip(): alias_map[sub.strip().lower()] = main_p
-            
-            # Para o resto, recolhemos todas as strings limpas (para apanhar remakes)
             else:
                 for _, row in df.iterrows():
                     main_p = str(row.iloc[0]).strip()
@@ -168,15 +164,14 @@ def load_parts():
                         if col_name != df.columns[0] and col_name not in colunas_a_ignorar:
                             if pd.notna(val):
                                 val_str = str(val).strip()
-                                # Ignora links e palavras soltas de metadados
                                 if not val_str.startswith("http") and val_str not in ['Right', 'Left', 'BX', 'UX']:
                                     clean_list.append(val_str)
 
             return sorted(list(set([x for x in clean_list if x and x not in ['-', '']])))
 
         return {
-            "bx_ux_blades": get_clean_list('Blades BX-UX'),
-            "ux_expanded_blades": get_clean_list('Blades UX-Expanded'),            
+            "bx_ux_blades": get_clean_list('Blades BX-UX'), 
+            "ux_expanded_blades": get_clean_list('Blades UX-Expanded'),
             "cx_blades": get_clean_list('Blades CX'),       
             "ratchets": get_clean_list('Ratchets'),
             "bits": get_clean_list('Bits'), 
@@ -185,13 +180,12 @@ def load_parts():
             "over_blades": get_clean_list('Over Blades'),
             "lock_chips": get_clean_list('Lock Chips')
         }, alias_map
-    except: return {k: [] for k in ["bx_ux_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
+    except: return {k: [] for k in ["bx_ux_blades", "ux_expanded_blades", "cx_blades", "ratchets", "bits", "assist_blades", "metal_blades", "over_blades", "lock_chips"]}, {}
 
 @st.cache_data(ttl=300)
 def get_dynamic_player_list():
     jogadores_oficiais = []
     try:
-        import json
         with open(DB_MASTER, "r", encoding="utf-8") as f:
             db = json.load(f)
             perfis = db.get("global_versus", {}).get("profiles", {})
@@ -224,7 +218,7 @@ def parse_smart_combo(text, parts_dict, alias_map):
     text_cl = "".join(words_cl)
     
     temp_dict = parts_dict.copy()
-    temp_dict["all_main_blades"] = parts_dict.get("bx_ux_blades", []) + parts_dict.get("cx_blades", [])
+    temp_dict["all_main_blades"] = parts_dict.get("bx_ux_blades", []) + parts_dict.get("cx_blades", []) + parts_dict.get("ux_expanded_blades", [])
     
     cats = [("over_blades", "over_blade"), ("metal_blades", "metal_blade"), ("all_main_blades", "main_blade"), ("assist_blades", "assist_blade"), ("ratchets", "ratchet"), ("bits", "bit"), ("lock_chips", "lock_chip")]
     
@@ -260,10 +254,10 @@ def parse_smart_combo(text, parts_dict, alias_map):
 
     if parsed["over_blade"] != "--" or parsed["metal_blade"] != "--": 
         parsed["type"] = "CX Expanded"
+    elif parsed["main_blade"] in temp_dict.get("ux_expanded_blades", []):
+        parsed["type"] = "UX Expanded"
     elif parsed["assist_blade"] != "--" or parsed["main_blade"] in parts_dict.get("cx_blades", []): 
-        parsed["type"] = "CX"
-    elif parsed["main_blade"] in temp_dict.get("ux_expanded_blades", []): # <-- ADICIONADO
-        parsed["type"] = "UX Expanded"    
+        parsed["type"] = "CX" 
     else: 
         parsed["type"] = "Standard (BX / UX)"
     
@@ -427,6 +421,8 @@ if menu == "📝 Formulário Público":
                                     tipo_builder = c.get("type", "Basic (BX)")
                                     if tipo_builder in ["Basic (BX)", "Unique (UX)"]: 
                                         tipo_check = "Standard (BX / UX)"
+                                    elif tipo_builder == "UX Expanded":
+                                        tipo_check = "UX Expanded"
                                     elif tipo_builder == "Custom (CX)": 
                                         tipo_check = "CX"
                                     else: 
@@ -445,7 +441,6 @@ if menu == "📝 Formulário Público":
                     pass 
             except Exception as e:
                 pass
-        # 👆 FIM DO BLOCO MÁGICO 👆
         
     with st.container(border=True):
         st.subheader("⚡ Quick Add (Autocomplete Ativo)")
@@ -469,7 +464,7 @@ if menu == "📝 Formulário Público":
                 
         if "smart_match" in st.session_state:
             m = st.session_state.smart_match
-            if m["type"] == "Standard (BX / UX)":
+            if m["type"] in ["Standard (BX / UX)", "UX Expanded"]:
                 display_text = f"{m.get('main_blade')} | {m.get('ratchet')} | {m.get('bit')}"
             elif m["type"] == "CX":
                 display_text = f"{m.get('lock_chip')} | {m.get('main_blade')} | {m.get('assist_blade')} | {m.get('ratchet')} | {m.get('bit')}"
@@ -548,7 +543,6 @@ if menu == "📝 Formulário Público":
             combos.append(cd)
 
             if not missing_parts and not has_duplicates:
-                # ... (Mantém a validação de duplicados da main_blade) ...
                 b = cd.get('over_blade', cd.get('main_blade', '--'))
                 if b != '--':
                     base = re.sub(r'\s*\(.*?\)\s*', '', str(b)).strip().lower()
@@ -556,7 +550,10 @@ if menu == "📝 Formulário Público":
                     used_blades.add(base)
                     
                 r = cd.get('ratchet', '--')
-                if r != '--' and "Integrada" not in r: # <-- MAGIA AQUI
+                if ct == "UX Expanded": r = "Integrada na Blade"
+                elif cd.get('bit', '--') in ["Turbo", "Operate"]: r = "Integrada"
+                
+                if r != '--' and "Integrada" not in r:
                     if r in used_ratchets: has_duplicates = True; dup_error_msg = f"A Ratchet '{r}' está repetida!"
                     used_ratchets.add(r)
                     
@@ -606,7 +603,7 @@ if menu == "📝 Formulário Público":
                 if c['type'] == 'Standard (BX / UX)': discord_text += f"🔹 **Combo {c['combo_number']}:** {c['main_blade']} | {c['ratchet']} | {c['bit']}\n"
                 elif c['type'] == 'CX': discord_text += f"🔹 **Combo {c['combo_number']} (CX):** {c['lock_chip']} | {c['main_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
                 elif c['type'] == 'CX Expanded': discord_text += f"🔹 **Combo {c['combo_number']} (CX Exp):** {c['lock_chip']} | {c['metal_blade']} | {c['over_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
-                elif c['type'] == 'UX Expanded': discord_text += f"🔹 Combo {c['combo_number']}(UX Exp): {c['main_blade']} | {c['bit']}\n")
+                elif c['type'] == 'UX Expanded': discord_text += f"🔹 **Combo {c['combo_number']} (UX Exp):** {c['main_blade']} | {c['bit']}\n"
             
             sum_c1, sum_c2 = st.columns([3, 2])
             with sum_c1:
