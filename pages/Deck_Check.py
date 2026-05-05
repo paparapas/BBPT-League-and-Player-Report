@@ -175,7 +175,8 @@ def load_parts():
             return sorted(list(set([x for x in clean_list if x and x not in ['-', '']])))
 
         return {
-            "bx_ux_blades": get_clean_list('Blades BX-UX'), 
+            "bx_ux_blades": get_clean_list('Blades BX-UX'),
+            "ux_expanded_blades": get_clean_list('Blades UX-Expanded'),            
             "cx_blades": get_clean_list('Blades CX'),       
             "ratchets": get_clean_list('Ratchets'),
             "bits": get_clean_list('Bits'), 
@@ -260,7 +261,9 @@ def parse_smart_combo(text, parts_dict, alias_map):
     if parsed["over_blade"] != "--" or parsed["metal_blade"] != "--": 
         parsed["type"] = "CX Expanded"
     elif parsed["assist_blade"] != "--" or parsed["main_blade"] in parts_dict.get("cx_blades", []): 
-        parsed["type"] = "CX" 
+        parsed["type"] = "CX"
+    elif parsed["main_blade"] in temp_dict.get("ux_expanded_blades", []): # <-- ADICIONADO
+        parsed["type"] = "UX Expanded"    
     else: 
         parsed["type"] = "Standard (BX / UX)"
     
@@ -485,30 +488,39 @@ if menu == "📝 Formulário Público":
     for i in range(st.session_state.num_combos):
         with st.container(border=True):
             t1, t2 = st.columns([1, 3]); t1.markdown(f"#### Combo {i+1}")
-            ct = t2.selectbox("Tipo", ["Standard (BX / UX)", "CX", "CX Expanded"], key=f"c_{i}_type", label_visibility="collapsed")
+            ct = t2.selectbox("Tipo", ["Standard (BX / UX)", "CX", "CX Expanded", "UX Expanded"], key=f"c_{i}_type", label_visibility="collapsed")
+            
+            is_int = st.session_state.get(f"c_{i}_bit", "--") in ["Turbo", "Operate"]
+            r_opts = ["Integrada"] if is_int else ["--"] + parts["ratchets"]
             
             if ct == "Standard (BX / UX)":
                 c1, c2, c3 = st.columns([2, 1, 1])
                 c1.selectbox("Blade", ["--"]+parts["bx_ux_blades"], key=f"c_{i}_main_blade")
-                c2.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c3.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
+                c2.selectbox("Ratchet", r_opts, key=f"c_{i}_ratchet", disabled=is_int)
             elif ct == "CX":
                 c1, c2, c3, c4, c5 = st.columns([1.5, 2, 2, 1.2, 1.2])
                 if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
                 else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
                 c2.selectbox("Main", ["--"]+parts["cx_blades"], key=f"c_{i}_main_blade")
                 c3.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
-                c4.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c5.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
-            else:
+                c4.selectbox("Ratchet", r_opts, key=f"c_{i}_ratchet", disabled=is_int)
+            elif ct == "CX Expanded":
                 c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2, 2, 2, 1.2, 1.2])
                 if parts["lock_chips"]: c1.selectbox("Chip", ["--"]+parts["lock_chips"], key=f"c_{i}_lock_chip")
                 else: c1.text_input("Chip", key=f"c_{i}_lock_chip")
                 c2.selectbox("Metal", ["--"]+parts["metal_blades"], key=f"c_{i}_metal_blade")
                 c3.selectbox("Over", ["--"]+parts["over_blades"], key=f"c_{i}_over_blade")
                 c4.selectbox("Assist", ["--"]+parts["assist_blades"], key=f"c_{i}_assist_blade")
-                c5.selectbox("Ratchet", ["--"]+parts["ratchets"], key=f"c_{i}_ratchet")
                 c6.selectbox("Bit", ["--"]+parts["bits"], key=f"c_{i}_bit")
+                c5.selectbox("Ratchet", r_opts, key=f"c_{i}_ratchet", disabled=is_int)
+            elif ct == "UX Expanded":
+                c1, c2 = st.columns([2, 1])
+                c1.selectbox("Blade", ["--"]+parts.get("ux_expanded_blades", []), key=f"c_{i}_main_blade")
+                bits_val = [b for b in parts["bits"] if b not in ["Turbo", "Operate"]]
+                c2.selectbox("Bit", ["--"]+bits_val, key=f"c_{i}_bit")
+                st.session_state[f"c_{i}_ratchet"] = "Integrada na Blade"
                 
     with st.container(border=True):
         up = st.file_uploader("Foto:", type=['png', 'jpg', 'jpeg'])
@@ -524,15 +536,19 @@ if menu == "📝 Formulário Público":
         
         for i in range(st.session_state.num_combos):
             ct = st.session_state[f"c_{i}_type"]; cd = {"type": ct, "combo_number": i+1}
-            ks = ["main_blade", "ratchet", "bit"] if ct == "Standard (BX / UX)" else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
+            ks = ["main_blade", "ratchet", "bit"] if ct in ["Standard (BX / UX)", "UX Expanded"] else ["lock_chip", "main_blade", "assist_blade", "ratchet", "bit"] if ct == "CX" else ["lock_chip", "metal_blade" , "over_blade" , "assist_blade", "ratchet", "bit"]
             
             for k in ks:
                 v = st.session_state.get(f"c_{i}_{k}", "--")
+                if ct == "UX Expanded" and k == "ratchet": v = "Integrada na Blade"
+                elif k == "ratchet" and st.session_state.get(f"c_{i}_bit", "--") in ["Turbo", "Operate"]: v = "Integrada"
+                
                 cd[k] = v
                 if v == "--" or not str(v).strip(): missing_parts = True
             combos.append(cd)
 
             if not missing_parts and not has_duplicates:
+                # ... (Mantém a validação de duplicados da main_blade) ...
                 b = cd.get('over_blade', cd.get('main_blade', '--'))
                 if b != '--':
                     base = re.sub(r'\s*\(.*?\)\s*', '', str(b)).strip().lower()
@@ -540,7 +556,7 @@ if menu == "📝 Formulário Público":
                     used_blades.add(base)
                     
                 r = cd.get('ratchet', '--')
-                if r != '--':
+                if r != '--' and "Integrada" not in r: # <-- MAGIA AQUI
                     if r in used_ratchets: has_duplicates = True; dup_error_msg = f"A Ratchet '{r}' está repetida!"
                     used_ratchets.add(r)
                     
@@ -590,6 +606,7 @@ if menu == "📝 Formulário Público":
                 if c['type'] == 'Standard (BX / UX)': discord_text += f"🔹 **Combo {c['combo_number']}:** {c['main_blade']} | {c['ratchet']} | {c['bit']}\n"
                 elif c['type'] == 'CX': discord_text += f"🔹 **Combo {c['combo_number']} (CX):** {c['lock_chip']} | {c['main_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
                 elif c['type'] == 'CX Expanded': discord_text += f"🔹 **Combo {c['combo_number']} (CX Exp):** {c['lock_chip']} | {c['metal_blade']} | {c['over_blade']} | {c['assist_blade']} | {c['ratchet']} | {c['bit']}\n"
+                elif c['type'] == 'UX Expanded': discord_text += f"🔹 Combo {c['combo_number']}(UX Exp): {c['main_blade']} | {c['bit']}\n")
             
             sum_c1, sum_c2 = st.columns([3, 2])
             with sum_c1:
