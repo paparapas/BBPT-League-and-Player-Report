@@ -559,12 +559,15 @@ for i in range(st.session_state.deck_size):
     combo_str_parts = []
     for k in ks:
         v = st.session_state.get(f"b_c_{i}_{k}", "--")
+        
+        # Garante que a variável gravada e avaliada é a correta
         if ct == "UX Expanded" and k == "ratchet": 
             v = "Integrada na Blade"
         elif k == "ratchet" and st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]: 
             v = "Integrada"
             
-        if v != "Integrada na Blade": 
+        # MAGIA AQUI: Oculta qualquer menção a Ratchets integradas no texto e no Cartão Visual
+        if v not in ["Integrada na Blade", "Integrada"]: 
             combo_str_parts.append(v)
             
         if v == "--": missing_parts = True
