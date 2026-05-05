@@ -218,7 +218,7 @@ def load_builder_data():
         return {
             "bx_blades": sorted(list(set(bx_list))),
             "ux_blades": sorted(list(set(ux_list))),
-            "ux_expanded_blades": parts_dict.get('Blades UX-Expanded', []), # A NOVA ABA UX EXPANDED
+            "ux_expanded_blades": parts_dict.get('Blades UX-Expanded', []),
             "cx_blades": parts_dict.get('Blades CX', []),
             "ratchets": parts_dict.get('Ratchets', []),
             "bits": parts_dict.get('Bits', []), 
@@ -463,7 +463,6 @@ for i in range(st.session_state.deck_size):
         with c_title:
             st.markdown(f"#### 🌀 Combo {i+1}")
         with c_type:
-            # 1. NOVO TIPO "UX EXPANDED" INSERIDO AQUI
             ct = st.selectbox("Linha", ["Basic (BX)", "Unique (UX)", "Custom (CX)", "Expand (CXE)", "UX Expanded"], key=f"b_c_{i}_type", label_visibility="collapsed")
             if ct == "Expand (CXE)":
                 st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
@@ -482,7 +481,6 @@ for i in range(st.session_state.deck_size):
             
         st.write("") 
         
-        # 2. MAGIA DAS BITS INTEGRADAS
         is_int_bit = st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]
         ratchet_opts = ["Integrada"] if is_int_bit else ["--"] + parts["ratchets"]
         
@@ -491,7 +489,6 @@ for i in range(st.session_state.deck_size):
             c1, c2, c3 = st.columns([2, 1, 1])
             c1.selectbox("Blade", ["--"]+blade_list, key=f"b_c_{i}_main_blade")
             c3.selectbox("Bit", ["--"]+parts["bits"], key=f"b_c_{i}_bit")
-            # A Ratchet fica bloqueada se tiver bit "Turbo" ou "Operate"
             c2.selectbox("Ratchet", ratchet_opts, key=f"b_c_{i}_ratchet", disabled=is_int_bit)
             
             g1, g2, g3 = st.columns(3)
@@ -532,15 +529,10 @@ for i in range(st.session_state.deck_size):
             with g6: render_part_card(st.session_state[f"b_c_{i}_bit"], "Bit")
 
         elif ct == "UX Expanded":
-            # 3. NOVO LAYOUT DO UX EXPANDED
             c1, c2 = st.columns([2, 1])
             c1.selectbox("Blade", ["--"]+parts.get("ux_expanded_blades", []), key=f"b_c_{i}_main_blade")
-            
-            # Bloqueia a seleção de bits integradas para evitar duplo integrado
             bits_validos = [b for b in parts["bits"] if b not in ["Turbo", "Operate"]]
             c2.selectbox("Bit", ["--"]+bits_validos, key=f"b_c_{i}_bit")
-            
-            # Força Ratchet a integrada e esconde a caixa visualmente
             st.session_state[f"b_c_{i}_ratchet"] = "Integrada na Blade" 
             
             g1, g2 = st.columns(2)
@@ -557,7 +549,6 @@ used_blades, used_ratchets, used_bits, used_chips, used_assist, used_metal = set
 deck_text_export = "🛡️ **O Meu Deck BBPT**\n"
 combo_data_for_visual = []
 
-# 4. VALIDAÇÃO DE PEÇAS A ATUALIZAR AS NOVAS REGRAS
 for i in range(st.session_state.deck_size):
     ct = st.session_state[f"b_c_{i}_type"]
     sp = st.session_state[f"b_c_{i}_spin"]
@@ -568,14 +559,12 @@ for i in range(st.session_state.deck_size):
     combo_str_parts = []
     for k in ks:
         v = st.session_state.get(f"b_c_{i}_{k}", "--")
-        
-        # Garante que a variável gravada e avaliada é a correta
         if ct == "UX Expanded" and k == "ratchet": 
             v = "Integrada na Blade"
         elif k == "ratchet" and st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]: 
             v = "Integrada"
             
-        if v != "Integrada na Blade": # Esconde a palavra gigante da imagem final
+        if v != "Integrada na Blade": 
             combo_str_parts.append(v)
             
         if v == "--": missing_parts = True
@@ -589,7 +578,6 @@ for i in range(st.session_state.deck_size):
             if base in used_blades: has_duplicates = True; dup_error_msg = f"A Blade '{b}' está repetida!"
             used_blades.add(base)
             
-        # Avalia duplicados da Ratchet, a menos que seja integrada
         r = st.session_state.get(f"b_c_{i}_ratchet", '--')
         if ct == "UX Expanded": r = "Integrada na Blade"
         elif st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]: r = "Integrada"
@@ -619,7 +607,6 @@ for i in range(st.session_state.deck_size):
             if c_low in used_chips: has_duplicates = True; dup_error_msg = f"O Lock Chip '{c}' está repetido!"
             used_chips.add(c_low)
 
-        # 5. GERADOR DO SUMMARY VISUAL COM A UX EXPANDED
         img_html = ""
         if ct in ["Basic (BX)", "Unique (UX)", "UX Expanded"]:
             hero_blade = st.session_state[f"b_c_{i}_main_blade"]
@@ -672,7 +659,8 @@ with col_export:
 if not missing_parts and not has_duplicates:
     html_rows = ""
     for c in combo_data_for_visual:
-        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class=\"combo-icon light-backdrop-icon\" src=\"{c[\"spin\"]}\" alt=\"Spin\"></div><div class=\"combo-bottom-line\"><img class=\"combo-icon\" src=\"{c[\"type\"]}\" alt=\"Type\"><span class=\"combo-text\">{c[\"name\"]}</span></div></div></div>'
+        # AS BARRAS INVERTIDAS PROBLEMÁTICAS FORAM REMOVIDAS DESTA LINHA ABAIXO!
+        html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
     
     display_title = st.session_state.deck_name.upper() if st.session_state.get("deck_name", "").strip() else "DECK SUMMARY"
     visual_report_html = f'<div class="deck-summary-box"><div class="deck-summary-title">{display_title}</div>{html_rows}</div>'
