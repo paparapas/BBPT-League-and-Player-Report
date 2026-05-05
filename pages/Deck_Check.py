@@ -21,7 +21,7 @@ from fpdf import FPDF
 # ==========================================
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s [%(levelname)s] %(message)s')
 
-DATASET_PARTS = "Dataset_BeybladeParts.xlsx"
+DATASET_PARTS = "Dataset_BeybladeParts_Final_Images.xlsx"
 DB_MASTER = "bbpt_master_db.json"
 ADMIN_PASSWORD = "bbpt-paparapas" 
 
@@ -131,23 +131,49 @@ def load_parts():
     try:
         xls = pd.read_excel(DATASET_PARTS, sheet_name=None)
         alias_map = {}
+        
         def get_clean_list(sheet_name):
             if sheet_name not in xls: return []
             df = xls[sheet_name]
-            if sheet_name == 'Bits' and len(df.columns) > 1:
-                main_vals = []
-                if "Unnamed" not in str(df.columns[0]): main_vals.append(str(df.columns[0]))
-                main_vals.extend(df.iloc[:, 0].tolist())
+            df.columns = [str(c).strip() for c in df.columns]
+            
+            clean_list = []
+            colunas_a_ignorar = ['Spin Direction', 'Linhagem']
+            
+            # Para BITS, mantemos a lógica mapeamento de aliases
+            if sheet_name == 'Bits':
                 for _, row in df.iterrows():
                     main_p = str(row.iloc[0]).strip()
-                    if pd.isna(main_p) or main_p in ['-', '', 'nan']: continue
-                    for val in row.iloc[1:]:
-                        if pd.notna(val):
-                            for sub in str(val).split(','):
-                                if sub.strip(): alias_map[sub.strip().lower()] = main_p
-                return sorted(list(set([str(x).strip() for x in main_vals if pd.notna(x) and str(x).strip() not in ['-', '', 'nan']])))
-            all_v = [col for col in df.columns if "Unnamed" not in str(col)] + df.values.flatten().tolist()
-            return sorted(list(set([str(x).strip() for x in all_v if pd.notna(x) and str(x).strip() not in ['-', '', 'nan']])))
+                    if pd.isna(main_p) or main_p in ['-', '', 'nan'] or "Unnamed" in main_p: continue
+                    clean_list.append(main_p)
+                    
+                    for col_name, val in row.items():
+                        col_name = str(col_name).strip()
+                        if col_name != df.columns[0] and col_name not in colunas_a_ignorar:
+                            if pd.notna(val):
+                                val_str = str(val).strip()
+                                if not val_str.startswith("http"):
+                                    for sub in val_str.split(','):
+                                        if sub.strip(): alias_map[sub.strip().lower()] = main_p
+            
+            # Para o resto, recolhemos todas as strings limpas (para apanhar remakes)
+            else:
+                for _, row in df.iterrows():
+                    main_p = str(row.iloc[0]).strip()
+                    if pd.isna(main_p) or main_p in ['-', '', 'nan'] or "Unnamed" in main_p: continue
+                    clean_list.append(main_p)
+                    
+                    for col_name, val in row.items():
+                        col_name = str(col_name).strip()
+                        if col_name != df.columns[0] and col_name not in colunas_a_ignorar:
+                            if pd.notna(val):
+                                val_str = str(val).strip()
+                                # Ignora links e palavras soltas de metadados
+                                if not val_str.startswith("http") and val_str not in ['Right', 'Left', 'BX', 'UX']:
+                                    clean_list.append(val_str)
+
+            return sorted(list(set([x for x in clean_list if x and x not in ['-', '']])))
+
         return {
             "bx_ux_blades": get_clean_list('Blades BX-UX'), 
             "cx_blades": get_clean_list('Blades CX'),       
