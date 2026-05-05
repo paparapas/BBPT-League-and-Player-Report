@@ -467,7 +467,7 @@ for i in range(st.session_state.deck_size):
             if ct == "Expand (CXE)":
                 st.markdown(f"<img src='{LINE_LOGOS['Custom (CX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
             elif ct == "UX Expanded":
-                st.markdown(f"<img src='{LINE_LOGOS['Unique (UX)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{LINE_LOGOS['Unique (UX)']}' style='height: 24px; margin-top: 5px; margin-right: 5px;'><img src='{LINE_LOGOS['Expand (CXE)']}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
             else:
                 st.markdown(f"<img src='{LINE_LOGOS[ct]}' style='height: 24px; margin-top: 5px;'>", unsafe_allow_html=True)
         with c_spin:
@@ -559,14 +559,12 @@ for i in range(st.session_state.deck_size):
     combo_str_parts = []
     for k in ks:
         v = st.session_state.get(f"b_c_{i}_{k}", "--")
-        
-        # Garante que a variável gravada e avaliada é a correta
         if ct == "UX Expanded" and k == "ratchet": 
             v = "Integrada na Blade"
         elif k == "ratchet" and st.session_state.get(f"b_c_{i}_bit", "--") in ["Turbo", "Operate"]: 
             v = "Integrada"
             
-        # MAGIA AQUI: Oculta qualquer menção a Ratchets integradas no texto e no Cartão Visual
+        # Oculta menção a Ratchets integradas no sumário
         if v not in ["Integrada na Blade", "Integrada"]: 
             combo_str_parts.append(v)
             
@@ -631,11 +629,16 @@ for i in range(st.session_state.deck_size):
             img_html = f'<div class="composite-blade-container"><img class="composite-layer layer-metal" src="{url_metal}" alt="Metal" referrerpolicy="no-referrer"><img class="composite-layer layer-main" src="{url_over}" alt="Over" referrerpolicy="no-referrer"><img class="composite-layer layer-chip" src="{url_chip}" alt="Chip" referrerpolicy="no-referrer"></div>'
 
         logos_html = ""
-        if "Basic" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic">'
-        if "Unique" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique">'
-        if "UX Expanded" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique Expanded">'
-        if "Custom" in ct: logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom">'
-        if "Expand" in ct and ct != "UX Expanded": logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
+        if ct == "Basic (BX)": 
+            logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Basic (BX)"]}" alt="Basic">'
+        elif ct == "Unique (UX)": 
+            logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique">'
+        elif ct == "Custom (CX)": 
+            logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom">'
+        elif ct == "Expand (CXE)": 
+            logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Custom (CX)"]}" alt="Custom"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
+        elif ct == "UX Expanded": 
+            logos_html += f'<img class="combo-line-img" src="{LINE_LOGOS["Unique (UX)"]}" alt="Unique"><img class="combo-line-img" src="{LINE_LOGOS["Expand (CXE)"]}" alt="Expand">'
 
         combo_data_for_visual.append({
             "image_html": img_html,
@@ -662,7 +665,6 @@ with col_export:
 if not missing_parts and not has_duplicates:
     html_rows = ""
     for c in combo_data_for_visual:
-        # AS BARRAS INVERTIDAS PROBLEMÁTICAS FORAM REMOVIDAS DESTA LINHA ABAIXO!
         html_rows += f'<div class="combo-row">{c["image_html"]}<div class="combo-info"><div class="combo-top-line">{c["logos_html"]}<img class="combo-icon light-backdrop-icon" src="{c["spin"]}" alt="Spin"></div><div class="combo-bottom-line"><img class="combo-icon" src="{c["type"]}" alt="Type"><span class="combo-text">{c["name"]}</span></div></div></div>'
     
     display_title = st.session_state.deck_name.upper() if st.session_state.get("deck_name", "").strip() else "DECK SUMMARY"
