@@ -80,17 +80,17 @@ with col_dir:
 
     cartazes = [
         {
-            "nome": " Torneio Critical Hit (02/05/2026) - Liga Critical X - Link do Challonge: https://challonge.com/tournaments/signup/2avaVCsl6D#/signup/x9e1dgv8swf.",
-            "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400296865862/Torneio_Critical_Hit_31_01_copy_2.png?ex=69f3bc62&is=69f26ae2&hm=800655eee5dee51c31d8b43a141ca9e9f0d6390f5609a6887a0d4e4bfaea6180&=&format=webp&quality=lossless"
+            "nome": " Torneio Critical Hit (09/05/2026) - Liga Critical X - Link do Challonge: https://challonge.com/tournaments/signup/Xwp8IJLMCB#/signup/z3jrsguioeg",
+            "url": "https://cdn.discordapp.com/attachments/1280979233619050660/1501703664249737216/Torneio_Critical_Hit_31_01_copy_4-1.png?ex=69ff0445&is=69fdb2c5&hm=e30239a251ffee95815947c15095990cf18c8bc72bfc0076ad03c57b0e33e239&"
         },
 
         {
-            "nome": " Torneio Mercadia (03/05/2026) - Mercadia Showdown - Link do Challonge ainda não disponivel. Fica atento!!",
-            "url": "https://media.discordapp.net/attachments/1334224353142771815/1499146400716427265/Torneio_Mercadia_08_02_2.png?ex=69f3bc62&is=69f26ae2&hm=6dc7c0e8b69e6289fad54c1bec5b2cf3683138a6d4f368c30da589fd5800d5c3&=&format=webp&quality=lossless"
+            "nome": " Torneio Mercadia (10/05/2026) - Mercadia Showdown - Link do Challonge ainda não disponivel. Fica atento!!",
+            "url": "https://challonge.com/tournaments/signup/kyyU41xhoE#/signup/zag2e0uy3ll"
         },
         {
-            "nome": " (Upcoming) Liga Fénix Negra - Em breve! Fica atento!!",
-            "url": "https://cdn.discordapp.com/attachments/1334224353142771815/1499158726777503744/image.png?ex=69f3c7dd&is=69f2765d&hm=73494e5b2ff94facd328c2a3fbadca90d1c545a6de8cb08e844bef840a33f505&"
+            "nome": " Liga Fénix Negra (10/05/2026) - Link do Challonge: https://challonge.com/tournaments/signup/U5VMN5OArL#/signup/ctbysplc807",
+            "url": "https://cdn.discordapp.com/attachments/1334224353142771815/1502324365969195008/4_por_5_fenix.jpg?ex=69ff4c18&is=69fdfa98&hm=5af689e9ca43e9fb7d707e59964e88530c01c85b741c4a6607fe7b1f0972a75f&"
         },
     ]
     
