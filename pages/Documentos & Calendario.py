@@ -85,8 +85,8 @@ with col_dir:
         },
 
         {
-            "nome": " Torneio Mercadia (10/05/2026) - Mercadia Showdown - Link do Challonge ainda não disponivel. Fica atento!!",
-            "url": "https://challonge.com/tournaments/signup/kyyU41xhoE#/signup/zag2e0uy3ll"
+            "nome": " Torneio Mercadia (10/05/2026) - Mercadia Showdown - Link do Challonge : https://challonge.com/tournaments/signup/kyyU41xhoE#/signup/zag2e0uy3ll",
+            "url": "https://cdn.discordapp.com/attachments/1280979233619050660/1501703548315111454/Torneio_Mercadia_08_02_3.png?ex=69ff042a&is=69fdb2aa&hm=a3c2673fb947302bdad5a7ec2f8191a817bb5da7f059e8d3a5bb95521bb4ffa3&"
         },
         {
             "nome": " Liga Fénix Negra (10/05/2026) - Link do Challonge: https://challonge.com/tournaments/signup/U5VMN5OArL#/signup/ctbysplc807",
