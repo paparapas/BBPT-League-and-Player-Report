@@ -73,7 +73,7 @@ st.sidebar.divider()
 page = st.sidebar.radio("Navegação:", [
     "🏠 Página Inicial",
     "Liga Critical", 
-    "Liga Versus", 
+    "Liga Fénix Negra", 
     "Torneio de Equipas - Liga Versus", 
     "Rankings Globais", 
     "Ad-Hoc: Blader Profile",
@@ -111,7 +111,7 @@ def render_advanced_metrics(metrics, league_mode=True):
 
 def render_league_page(league_name, league_key, comm_file):
     if "versus" in league_name.lower() or "versus" in league_key.lower():
-        nome_ficheiro = "versus.png"
+        nome_ficheiro = "fenix.png"
     else:
         nome_ficheiro = "critical.png"
         
@@ -244,11 +244,11 @@ if page == "🏠 Página Inicial":
 elif page == "Liga Critical":
     render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
 
-elif page == "Liga Versus":
+elif page == "Liga Fénix Negra":
     render_league_page("Liga Versus X", "league_versus", "comunicacoesVersus.txt")
 
-elif page == "Torneio de Equipas - Liga Versus":
-    st.title("🤝 Torneio de Equipas - Liga Versus")
+elif page == "Torneio de Equipas - Fénix Negra":
+    st.title("🤝 Torneio de Equipas - Fénix Negra")
     
     comunicado = load_communications("comunicacoesEquipasVersus.txt")
     if comunicado:
