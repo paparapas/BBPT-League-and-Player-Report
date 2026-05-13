@@ -245,7 +245,7 @@ elif page == "Liga Critical":
     render_league_page("Liga Critical X", "league_critical", "comunicacoesCritical.txt")
 
 elif page == "Liga Fénix Negra":
-    render_league_page("Liga Versus X", "league_versus", "comunicacoesVersus.txt")
+    render_league_page("Liga Fénix Negra", "league_versus", "comunicacoesVersus.txt")
 
 elif page == "Torneio de Equipas - Fénix Negra":
     st.title("🤝 Torneio de Equipas - Fénix Negra")
