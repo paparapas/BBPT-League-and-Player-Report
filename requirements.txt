@@ -7,3 +7,4 @@ requests
 streamlit-keyup
 fpdf
 Pillow
+supabase
