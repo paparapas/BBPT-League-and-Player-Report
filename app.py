@@ -16,8 +16,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 A Fénix Negra tem uma nova morada!")
-st.markdown("O ecossistema BBPT foi atualizado para uma versão muito mais rápida, estável e segura.")
+st.title("🚀 O BBPT HUBfoi atualizado e agora é o BBPT HUB 2.0")
+st.markdown("O ecossistema BBPT foi atualizado para uma versão muito mais rápida, estável e segura e por isso o link é diferente!")
 
 st.warning("A redirecionar automaticamente para a nova aplicação...")
 
