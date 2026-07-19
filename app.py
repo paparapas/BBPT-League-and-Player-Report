@@ -19,13 +19,14 @@ st.markdown("""
 st.info(f"A redirecionar... **[Clica aqui se demorar muito]({NOVO_URL})**")
 
 # ==========================================
-# INSTANT REDIRECT METHOD (0 SECONDS)
+# MÉTODO DE REDIRECIONAMENTO SEGURO (MAIN WINDOW)
 # ==========================================
 js_redirect = f"""
 <script>
-    // Executes the redirect immediately without the 2000ms delay
+    // window.top força o redirecionamento da aba inteira do browser,
+    // escapando do iframe invisível do Streamlit.
     setTimeout(function() {{
-        window.location.replace('{NOVO_URL}');
+        window.top.location.href = '{NOVO_URL}';
     }}, 0);
 </script>
 """
