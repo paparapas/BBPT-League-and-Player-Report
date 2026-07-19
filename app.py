@@ -23,11 +23,12 @@ st.info(f"A redirecionar... **[Clica aqui se demorar muito]({NOVO_URL})**")
 # ==========================================
 js_redirect = f"""
 <script>
-    // window.top força o redirecionamento da aba inteira do browser,
-    // escapando do iframe invisível do Streamlit.
-    setTimeout(function() {{
-        window.top.location.href = '{NOVO_URL}';
-    }}, 0);
+    // Cria um link invisível que força a abertura na mesma aba (_parent) e clica nele
+    var link = document.createElement('a');
+    link.href = '{NOVO_URL}';
+    link.target = '_parent';
+    document.body.appendChild(link);
+    link.click();
 </script>
 """
 
