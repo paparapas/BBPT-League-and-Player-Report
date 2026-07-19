@@ -1,11 +1,12 @@
 import streamlit as st
 
 # ==========================================
-# COLOCA AQUI O LINK DA NOVA APP
+# CHANGE THIS LINK TO UPDATE THE QR CODE DESTINATION
 # ==========================================
 NOVO_URL = "https://bbportugalapp2.streamlit.app/"
 
-st.set_page_config(page_title="App Atualizada", page_icon="🚀", layout="centered")
+# Generic page config so it doesn't look out of place for different campaigns
+st.set_page_config(page_title="A redirecionar...", page_icon="🔗", layout="centered")
 
 st.markdown("""
 <style>
@@ -14,20 +15,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 Já está disponível o BBPT Hub 2.0!")
-st.markdown("O ecossistema BBPT foi atualizado para uma versão muito mais rápida, estável e segura.")
-
-st.info(f"A redirecionar... Se não fores reencaminhado, **[clica aqui para aceder]({NOVO_URL})**.")
+# A clean, simple fallback message
+st.info(f"A redirecionar... **[Clica aqui se demorar muito]({NOVO_URL})**")
 
 # ==========================================
-# MÉTODO DE REDIRECIONAMENTO SEGURO (SEM LOOP)
+# INSTANT REDIRECT METHOD (0 SECONDS)
 # ==========================================
 js_redirect = f"""
 <script>
-    // Espera 2 segundos e redireciona de forma limpa, substituindo o histórico
+    // Executes the redirect immediately without the 2000ms delay
     setTimeout(function() {{
         window.location.replace('{NOVO_URL}');
-    }}, 2000);
+    }}, 0);
 </script>
 """
 
